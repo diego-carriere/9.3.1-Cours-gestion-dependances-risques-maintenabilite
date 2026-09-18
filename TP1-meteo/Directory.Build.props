@@ -22,6 +22,12 @@
     <WarningsAsErrors>IDE0005</WarningsAsErrors>
   </PropertyGroup>
 
+  <PropertyGroup Condition="$(MSBuildProjectName.Contains('Tests'))">
+    <!-- CA1707 (pas d'underscores dans les noms) vise l'API publique ; les noms de tests
+         xUnit en Given_When_Then sont délibérément plus lisibles ainsi. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
   <!-- Les adaptateurs d'Infrastructure sont internal : ce n'est visible qu'aux tests
        d'Infrastructure. Le composition root (Meteo.Api) ne peut alors physiquement pas
        instancier un adaptateur lui-même — cf. Support J1, "Le problème du new partout". -->
