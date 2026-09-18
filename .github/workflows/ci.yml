@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: TP1-meteo
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: TP1-meteo/global.json
+
+      - run: dotnet restore
+
+      # TreatWarningsAsErrors=true (Directory.Build.props) : ce build échoue sur le
+      # moindre avertissement, pas seulement sur une erreur de compilation.
+      - run: dotnet build --no-restore -c Release
+
+      # Aucun appel réseau dans la suite de tests par défaut (transport HTTP simulé,
+      # cf. Meteo.TestSupport et Meteo.Api.E2ETests/FakeUpstream) : CI déterministe,
+      # jamais soumise au rate-limit de Nominatim.
+      - run: dotnet test --no-build -c Release --logger trx --results-directory TestResults
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TP1-meteo/TestResults
+
+  docker:
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: docker build -t meteo-api:ci TP1-meteo
