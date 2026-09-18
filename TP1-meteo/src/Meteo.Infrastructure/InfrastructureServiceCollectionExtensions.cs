@@ -1,6 +1,7 @@
 using Meteo.Domain.Abstractions;
 using Meteo.Infrastructure.Caching;
 using Meteo.Infrastructure.Geocoding;
+using Meteo.Infrastructure.Resilience;
 using Meteo.Infrastructure.Time;
 using Meteo.Infrastructure.Weather;
 using Microsoft.Extensions.Configuration;
@@ -27,6 +28,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddOptions<OpenMeteoOptions>()
             .Bind(configuration.GetSection(OpenMeteoOptions.SectionName));
 
+        services.AddOptions<ResilienceOptions>()
+            .Bind(configuration.GetSection(ResilienceOptions.SectionName));
+
         // Singleton : un cache par requête ne cache rien.
         services.AddMemoryCache();
         services.TryAddSingleton(typeof(ICache<>), typeof(MemoryCache<>));
@@ -43,12 +47,22 @@ public static class InfrastructureServiceCollectionExtensions
         {
             var options = provider.GetRequiredService<IOptions<NominatimOptions>>().Value;
             client.BaseAddress = new Uri(options.BaseUrl);
+        })
+        .AddResilienceHandler("nominatim", (builder, context) =>
+        {
+            var options = context.ServiceProvider.GetRequiredService<IOptions<ResilienceOptions>>().Value;
+            ResiliencePipelines.Configure(builder, options.Nominatim);
         });
 
         services.AddHttpClient<IWeatherProvider, WeatherClient>((provider, client) =>
         {
             var options = provider.GetRequiredService<IOptions<OpenMeteoOptions>>().Value;
             client.BaseAddress = new Uri(options.BaseUrl);
+        })
+        .AddResilienceHandler("open-meteo", (builder, context) =>
+        {
+            var options = context.ServiceProvider.GetRequiredService<IOptions<ResilienceOptions>>().Value;
+            ResiliencePipelines.Configure(builder, options.OpenMeteo);
         });
 
         return services;

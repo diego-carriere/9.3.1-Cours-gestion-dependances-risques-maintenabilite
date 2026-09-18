@@ -80,7 +80,12 @@ public sealed class ForecastEndpointTests : ApiTestBase
     [Fact]
     public async Task Forecast_returns_503_with_retry_after_when_geocoding_is_down()
     {
-        Factory.Upstream.EnqueueFor(NominatimHost, new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        // Le pipeline de résilience réessaie : 1 tentative initiale + 2 retries (défaut
+        // Nominatim) avant d'abandonner. Il faut scripter les trois réponses.
+        for (var i = 0; i < 3; i++)
+        {
+            Factory.Upstream.EnqueueFor(NominatimHost, new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        }
 
         var response = await Client.GetAsync(new Uri("/forecast?address=Alès", UriKind.Relative));
 
