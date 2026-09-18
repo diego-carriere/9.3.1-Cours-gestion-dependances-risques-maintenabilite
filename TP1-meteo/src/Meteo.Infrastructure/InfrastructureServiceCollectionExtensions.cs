@@ -1,6 +1,7 @@
 using Meteo.Domain.Abstractions;
 using Meteo.Infrastructure.Caching;
 using Meteo.Infrastructure.Geocoding;
+using Meteo.Infrastructure.Providers;
 using Meteo.Infrastructure.Resilience;
 using Meteo.Infrastructure.Time;
 using Meteo.Infrastructure.Weather;
@@ -31,6 +32,14 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddOptions<ResilienceOptions>()
             .Bind(configuration.GetSection(ResilienceOptions.SectionName));
 
+        // Providers:Geocoder / Providers:Weather choisissent le fournisseur actif par port
+        // (TP2, "changer de fournisseur sans redéploiement") : voir GeocoderSelector et
+        // WeatherProviderSelector, qui la relisent à chaque appel via IOptionsMonitor.
+        services.AddOptions<ProvidersOptions>()
+            .Bind(configuration.GetSection(ProvidersOptions.SectionName))
+            .ValidateOnStart(); // Une clé de fournisseur inconnue empêche l'app de démarrer.
+        services.AddSingleton<IValidateOptions<ProvidersOptions>, ProvidersOptionsValidator>();
+
         // Singleton : un cache par requête ne cache rien.
         services.AddMemoryCache();
         services.TryAddSingleton(typeof(ICache<>), typeof(MemoryCache<>));
@@ -43,7 +52,13 @@ public static class InfrastructureServiceCollectionExtensions
         // jetables, mais le pool de HttpMessageHandler qui les sert est mutualisé par la
         // fabrique — elle-même singleton. Voir le README pour l'argument complet sur
         // pourquoi ce n'est PAS un singleton malgré l'intuition de départ.
-        services.AddHttpClient<IGeocoder, NominatimGeocodingClient>((provider, client) =>
+        //
+        // Chaque client typé n'est plus enregistré directement sous le port (IGeocoder,
+        // IWeatherProvider) : il est enregistré sous son propre type, puis exposé au port
+        // via une clé DI (AddKeyedTransient). Le port lui-même n'a plus qu'une seule
+        // implémentation enregistrée : le sélecteur (voir plus bas), qui choisit la clé à
+        // résoudre à chaque appel.
+        services.AddHttpClient<NominatimGeocodingClient>((provider, client) =>
         {
             var options = provider.GetRequiredService<IOptions<NominatimOptions>>().Value;
             client.BaseAddress = new Uri(options.BaseUrl);
@@ -54,8 +69,10 @@ public static class InfrastructureServiceCollectionExtensions
             ResiliencePipelines.ConfigureNominatimRateLimiter(builder);
             ResiliencePipelines.Configure(builder, options.Nominatim);
         });
+        services.AddKeyedTransient<IGeocoder>(
+            ProviderKeys.Nominatim, static (provider, _) => provider.GetRequiredService<NominatimGeocodingClient>());
 
-        services.AddHttpClient<IWeatherProvider, OpenMeteoWeatherClient>((provider, client) =>
+        services.AddHttpClient<OpenMeteoWeatherClient>((provider, client) =>
         {
             var options = provider.GetRequiredService<IOptions<OpenMeteoOptions>>().Value;
             client.BaseAddress = new Uri(options.BaseUrl);
@@ -65,6 +82,12 @@ public static class InfrastructureServiceCollectionExtensions
             var options = context.ServiceProvider.GetRequiredService<IOptions<ResilienceOptions>>().Value;
             ResiliencePipelines.Configure(builder, options.OpenMeteo);
         });
+        services.AddKeyedTransient<IWeatherProvider>(
+            ProviderKeys.OpenMeteo, static (provider, _) => provider.GetRequiredService<OpenMeteoWeatherClient>());
+
+        // Le port public : sans état propre, transient comme les clients qu'il délègue.
+        services.AddTransient<IGeocoder, GeocoderSelector>();
+        services.AddTransient<IWeatherProvider, WeatherProviderSelector>();
 
         return services;
     }
