@@ -29,10 +29,10 @@ public sealed class ForecastEndpointTests : ApiTestBase
 
     private const string OpenMeteoForecast = """
         {
-          "hourly_units": { "shortwave_radiation": "W/m²" },
+          "hourly_units": { "temperature_2m": "°C" },
           "hourly": {
             "time": ["2026-09-18T00:00", "2026-09-18T01:00"],
-            "shortwave_radiation": [0.0, 12.5]
+            "temperature_2m": [8.0, 12.5]
           }
         }
         """;
@@ -49,7 +49,7 @@ public sealed class ForecastEndpointTests : ApiTestBase
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.DoesNotContain("hourly_units", body, StringComparison.Ordinal);
-        Assert.DoesNotContain("shortwave_radiation\":[", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("temperature_2m\":[", body, StringComparison.Ordinal);
 
         var payload = await response.Content.ReadFromJsonAsync<ForecastResponse>();
         Assert.NotNull(payload);

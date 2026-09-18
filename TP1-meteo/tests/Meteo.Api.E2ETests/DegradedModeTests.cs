@@ -22,8 +22,8 @@ public sealed class DegradedModeTests : ApiTestBase
 
     private const string OpenMeteoForecast = """
         {
-          "hourly_units": { "shortwave_radiation": "W/m²" },
-          "hourly": { "time": ["2026-09-18T00:00"], "shortwave_radiation": [0.0] }
+          "hourly_units": { "temperature_2m": "°C" },
+          "hourly": { "time": ["2026-09-18T00:00"], "temperature_2m": [8.0] }
         }
         """;
 

@@ -1,5 +1,17 @@
 namespace Meteo.Domain.Model;
 
+/// <summary>
+/// Noms de variable canoniques que <see cref="Forecast.Variable"/> peut porter. Chaque
+/// fournisseur météo (Open-Meteo, MET Norway...) a son propre vocabulaire de champ
+/// (<c>temperature_2m</c>, <c>air_temperature</c>...) : la traduction vers ce nom canonique
+/// est le travail de son adaptateur dans Meteo.Infrastructure, pour que basculer de
+/// fournisseur (Support J1 TP2) ne change jamais le sens de la réponse.
+/// </summary>
+public static class WeatherVariables
+{
+    public const string AirTemperature = "air_temperature";
+}
+
 /// <summary>Un lieu résolu par le géocodage.</summary>
 public sealed record GeoLocation(double Latitude, double Longitude, string DisplayName);
 

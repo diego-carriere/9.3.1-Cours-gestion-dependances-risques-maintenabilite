@@ -40,9 +40,9 @@ public sealed class GetForecastUseCaseTests
 
     private static Forecast SampleForecast(GeoLocation location) => new(
         location,
-        "shortwave_radiation",
-        "W/m²",
-        [new ForecastPoint(Now, 0.0)]);
+        WeatherVariables.AirTemperature,
+        "°C",
+        [new ForecastPoint(Now, 18.4)]);
 
     [Fact]
     public async Task Happy_path_returns_success_and_is_not_degraded()

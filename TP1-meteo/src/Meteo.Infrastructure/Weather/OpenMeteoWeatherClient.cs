@@ -71,17 +71,47 @@ internal sealed partial class OpenMeteoWeatherClient : IWeatherProvider
             return Result.Failure<Forecast>(ForecastErrorKind.WeatherUnavailable, "Réponse Open-Meteo illisible.");
         }
 
-        if (payload?.Hourly?.Time is null || payload.Hourly.ShortwaveRadiation is null)
+        if (payload?.Hourly?.Time is null
+            || !TryReadSeries(payload.Hourly.OtherSeries, _options.HourlyVariable, out var values))
         {
             LogUnexpectedPayload();
             return Result.Failure<Forecast>(ForecastErrorKind.WeatherUnavailable, "Réponse Open-Meteo inattendue.");
         }
 
-        var points = ZipPoints(payload.Hourly.Time, payload.Hourly.ShortwaveRadiation);
-        var unit = payload.HourlyUnits?.ShortwaveRadiation ?? "W/m²";
+        var points = ZipPoints(payload.Hourly.Time, values);
+        var unit = NormalizeUnit(ReadUnit(payload.HourlyUnits, _options.HourlyVariable));
 
-        return Result.Success(new Forecast(location, _options.HourlyVariable, unit, points));
+        return Result.Success(new Forecast(location, WeatherVariables.AirTemperature, unit, points));
     }
+
+    // La série demandée porte le nom brut Open-Meteo (ex. "temperature_2m") : capturée en
+    // JsonExtensionData plutôt qu'en propriété fixe, elle ne franchit jamais cette classe —
+    // voir Meteo.Infrastructure.Tests.AdapterIsolationTests.
+    private static bool TryReadSeries(
+        Dictionary<string, JsonElement>? series, string variableName, out List<double> values)
+    {
+        values = [];
+
+        if (series is null || !series.TryGetValue(variableName, out var element)
+            || element.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var item in element.EnumerateArray())
+        {
+            values.Add(item.ValueKind == JsonValueKind.Number ? item.GetDouble() : double.NaN);
+        }
+
+        return true;
+    }
+
+    private static string? ReadUnit(Dictionary<string, string>? units, string variableName) =>
+        units is not null && units.TryGetValue(variableName, out var unit) ? unit : null;
+
+    // Open-Meteo annonce "°C" pour temperature_2m : passage direct. Gardé en fonction dédiée
+    // pour que le jour où la variable canonique change de source, un seul endroit traduit.
+    private static string NormalizeUnit(string? rawUnit) => rawUnit ?? "°C";
 
     private string BuildRequestUri(GeoLocation location)
     {
