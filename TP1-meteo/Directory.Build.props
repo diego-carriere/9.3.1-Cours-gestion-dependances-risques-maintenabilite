@@ -35,4 +35,11 @@
     <InternalsVisibleTo Include="Meteo.Infrastructure.Tests" />
   </ItemGroup>
 
+  <!-- Même raisonnement pour Meteo.Api : ForecastEndpoint/ForecastErrorMapper sont
+       internal ; seule la suite e2e qui l'héberge en mémoire peut les nommer directement
+       (ex. le test d'exhaustivité de ForecastErrorMapper). -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Meteo.Api'">
+    <InternalsVisibleTo Include="Meteo.Api.E2ETests" />
+  </ItemGroup>
+
 </Project>
