@@ -36,6 +36,28 @@ public class ArchitectureTests
             $"Meteo.Application ne doit connaître ni ASP.NET Core ni Polly, mais référence : {string.Join(", ", forbidden)}");
     }
 
+    /// <summary>
+    /// TP2 demande n°4 : les objets propres à chaque API (DTO Nominatim, BAN, Open-Meteo,
+    /// MET Norway...) ne franchissent jamais la frontière de Meteo.Infrastructure. Vérifié
+    /// côté Infrastructure par <c>Meteo.Infrastructure.Tests.AdapterIsolationTests</c> ;
+    /// vérifié ici côté Domaine/Application, qui ne devraient même pas connaître le mot "Dto".
+    /// </summary>
+    [Fact]
+    public void Domain_and_Application_declare_no_provider_DTO_type()
+    {
+        var domain = typeof(Meteo.Domain.Model.Address).Assembly;
+        var application = Assembly.Load("Meteo.Application");
+
+        var offending = domain.GetTypes().Concat(application.GetTypes())
+            .Where(t => t.Name.EndsWith("Dto", StringComparison.Ordinal))
+            .Select(t => t.FullName)
+            .ToList();
+
+        Assert.True(
+            offending.Count == 0,
+            $"Type(s) de type fournisseur (DTO) trouvés hors de Meteo.Infrastructure : {string.Join(", ", offending)}");
+    }
+
     private static List<string?> ReferencesOutsideBcl(Assembly assembly) =>
         assembly.GetReferencedAssemblies()
             .Where(a => a.Name is not null
