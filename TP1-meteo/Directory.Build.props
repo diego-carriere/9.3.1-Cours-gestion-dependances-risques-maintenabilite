@@ -22,7 +22,7 @@
     <WarningsAsErrors>IDE0005</WarningsAsErrors>
   </PropertyGroup>
 
-  <PropertyGroup Condition="$(MSBuildProjectName.Contains('Tests'))">
+  <PropertyGroup Condition="$(MSBuildProjectName.Contains('Test'))">
     <!-- CA1707 (pas d'underscores dans les noms) vise l'API publique ; les noms de tests
          xUnit en Given_When_Then sont délibérément plus lisibles ainsi. -->
     <NoWarn>$(NoWarn);CA1707</NoWarn>
