@@ -1,0 +1,32 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+
+    <!-- Un avertissement ignoré est une dette acceptée : voir Support J1, "A retenir". -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+
+    <!-- Requis par Roslyn pour qu'IDE0005 (using inutilisé) soit évalué au build,
+         pas seulement dans l'IDE : https://github.com/dotnet/roslyn/issues/41640 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Un using inutilisé est une dépendance fantôme. -->
+    <WarningsAsErrors>IDE0005</WarningsAsErrors>
+  </PropertyGroup>
+
+  <!-- Les adaptateurs d'Infrastructure sont internal : ce n'est visible qu'aux tests
+       d'Infrastructure. Le composition root (Meteo.Api) ne peut alors physiquement pas
+       instancier un adaptateur lui-même — cf. Support J1, "Le problème du new partout". -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Meteo.Infrastructure'">
+    <InternalsVisibleTo Include="Meteo.Infrastructure.Tests" />
+  </ItemGroup>
+
+</Project>

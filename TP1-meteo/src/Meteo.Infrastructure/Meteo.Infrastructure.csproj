@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Note l'absence de référence à Meteo.Application : l'Infrastructure implémente les
+       ports du Domaine, elle n'a aucune connaissance du cas d'usage qui les consomme. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Meteo.Domain\Meteo.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+  </ItemGroup>
+
+</Project>

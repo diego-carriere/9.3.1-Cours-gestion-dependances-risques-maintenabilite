@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- Bibliothèque de fakes partagée, pas un projet de test : référence les ports du
+       Domaine pour offrir FakeGeocoder/FakeWeatherProvider/FakeClock aux autres projets
+       de test, à la manière du FakeUserRepository de Support J1. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Meteo.Domain\Meteo.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit" />
+  </ItemGroup>
+
+</Project>

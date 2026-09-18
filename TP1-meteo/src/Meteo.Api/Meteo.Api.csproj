@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Tue la dépendance cachée "culture" au niveau de l'hôte : tout formatage explicite
+         passe par InvariantCulture de toute façon (voir GeocodingClient/WeatherClient). -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Meteo.Application\Meteo.Application.csproj" />
+    <ProjectReference Include="..\Meteo.Infrastructure\Meteo.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
