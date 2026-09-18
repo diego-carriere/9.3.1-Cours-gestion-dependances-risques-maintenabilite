@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <!-- Bibliothèque de fakes, pas un projet de test exécutable : référence xunit pour
+         GeocoderContractTests (une classe de base abstraite) sans le SDK de test complet.
+         Sans ce flag, `dotnet test` sur la solution tente de l'exécuter comme suite VSTest. -->
+    <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
   <!-- Bibliothèque de fakes partagée, pas un projet de test : référence les ports du
