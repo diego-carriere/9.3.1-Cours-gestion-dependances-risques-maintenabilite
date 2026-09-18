@@ -1,8 +1,10 @@
+using Meteo.Application.Options;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Meteo.Api.E2ETests;
 
@@ -33,7 +35,22 @@ public sealed class MeteoApiFactory : WebApplicationFactory<Program>
         ]));
 
         builder.ConfigureTestServices(services =>
+        {
             services.ConfigureHttpClientDefaults(http =>
-                http.ConfigurePrimaryHttpMessageHandler(() => Upstream.CreateHandler())));
+                http.ConfigurePrimaryHttpMessageHandler(() => Upstream.CreateHandler()));
+
+            // ForecastPolicyOptions a des propriétés init-only : on remplace l'enregistrement
+            // plutôt que de le muter. Fraîcheur météo quasi nulle pour que les tests du mode
+            // dégradé puissent forcer un second appel réel à Open-Meteo sans attendre 10 min ;
+            // la fraîcheur du géocodage reste au défaut (24h) pour le test "Nominatim appelé
+            // une seule fois". Enregistré en dernier : ConfigureTestServices s'exécute après
+            // AddApplication() et l'emporte donc sur son IOptions<ForecastPolicyOptions>.
+            services.AddSingleton(Options.Create(new ForecastPolicyOptions
+            {
+                GeocodingFreshness = TimeSpan.FromHours(24),
+                WeatherFreshness = TimeSpan.FromMilliseconds(1),
+                WeatherStaleRetention = TimeSpan.FromHours(6),
+            }));
+        });
     }
 }
