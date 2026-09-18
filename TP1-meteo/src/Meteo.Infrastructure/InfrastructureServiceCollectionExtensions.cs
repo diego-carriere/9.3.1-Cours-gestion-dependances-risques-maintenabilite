@@ -32,6 +32,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddOptions<OpenMeteoOptions>()
             .Bind(configuration.GetSection(OpenMeteoOptions.SectionName));
 
+        services.AddOptions<MetNoOptions>()
+            .Bind(configuration.GetSection(MetNoOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart(); // L'app refuse de démarrer sans User-Agent MET Norway valide.
+
         services.AddOptions<ResilienceOptions>()
             .Bind(configuration.GetSection(ResilienceOptions.SectionName));
 
@@ -100,6 +105,19 @@ public static class InfrastructureServiceCollectionExtensions
         });
         services.AddKeyedTransient<IWeatherProvider>(
             ProviderKeys.OpenMeteo, static (provider, _) => provider.GetRequiredService<OpenMeteoWeatherClient>());
+
+        services.AddHttpClient<MetNoWeatherClient>((provider, client) =>
+        {
+            var options = provider.GetRequiredService<IOptions<MetNoOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl);
+        })
+        .AddResilienceHandler("met-no", (builder, context) =>
+        {
+            var options = context.ServiceProvider.GetRequiredService<IOptions<ResilienceOptions>>().Value;
+            ResiliencePipelines.Configure(builder, options.MetNo);
+        });
+        services.AddKeyedTransient<IWeatherProvider>(
+            ProviderKeys.MetNo, static (provider, _) => provider.GetRequiredService<MetNoWeatherClient>());
 
         // Le port public : sans état propre, transient comme les clients qu'il délègue.
         services.AddTransient<IGeocoder, GeocoderSelector>();

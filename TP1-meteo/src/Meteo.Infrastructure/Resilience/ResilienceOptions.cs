@@ -48,6 +48,18 @@ public sealed class ResilienceOptions
         CircuitBreakerFailureRatio = 0.5,
         CircuitBreakerBreakDuration = TimeSpan.FromSeconds(10),
     };
+
+    public UpstreamResilienceOptions MetNo { get; init; } = new()
+    {
+        TotalTimeout = TimeSpan.FromSeconds(6),
+        AttemptTimeout = TimeSpan.FromSeconds(2),
+        RetryCount = 3,
+        RetryBaseDelay = TimeSpan.FromMilliseconds(300),
+        CircuitBreakerSamplingDuration = TimeSpan.FromSeconds(30),
+        CircuitBreakerMinimumThroughput = 10,
+        CircuitBreakerFailureRatio = 0.5,
+        CircuitBreakerBreakDuration = TimeSpan.FromSeconds(10),
+    };
 }
 
 /// <summary>Un <c>record</c> (plutôt qu'une classe) pour que les tests puissent dériver des variantes via <c>with</c>.</summary>

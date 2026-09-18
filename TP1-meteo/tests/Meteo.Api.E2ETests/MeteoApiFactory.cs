@@ -26,12 +26,21 @@ public sealed class MeteoApiFactory : WebApplicationFactory<Program>
         [
             new KeyValuePair<string, string?>("Nominatim:UserAgent", "TP1-Meteo-E2ETests/1.0 (test)"),
 
+            // MET Norway est validé au démarrage (ValidateOnStart) même quand il n'est pas
+            // le fournisseur météo actif : les deux fournisseurs restent utilisables sans
+            // redémarrage (TP2), donc les deux doivent déjà être correctement configurés.
+            new KeyValuePair<string, string?>("MetNo:UserAgent", "TP2-Meteo-E2ETests/1.0 (test)"),
+
             // Délais Polly raccourcis au minimum : la suite e2e doit rester rapide et
             // déterministe, jamais soumise aux vrais délais de retry/breaker.
             new KeyValuePair<string, string?>("Resilience:Nominatim:RetryBaseDelay", "00:00:00.001"),
             new KeyValuePair<string, string?>("Resilience:Nominatim:CircuitBreakerBreakDuration", "00:00:00.500"),
+            new KeyValuePair<string, string?>("Resilience:Ban:RetryBaseDelay", "00:00:00.001"),
+            new KeyValuePair<string, string?>("Resilience:Ban:CircuitBreakerBreakDuration", "00:00:00.500"),
             new KeyValuePair<string, string?>("Resilience:OpenMeteo:RetryBaseDelay", "00:00:00.001"),
             new KeyValuePair<string, string?>("Resilience:OpenMeteo:CircuitBreakerBreakDuration", "00:00:00.500"),
+            new KeyValuePair<string, string?>("Resilience:MetNo:RetryBaseDelay", "00:00:00.001"),
+            new KeyValuePair<string, string?>("Resilience:MetNo:CircuitBreakerBreakDuration", "00:00:00.500"),
         ]));
 
         builder.ConfigureTestServices(services =>
