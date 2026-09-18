@@ -26,6 +26,9 @@ public static class InfrastructureServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart(); // L'app refuse de démarrer sans User-Agent Nominatim valide.
 
+        services.AddOptions<BanOptions>()
+            .Bind(configuration.GetSection(BanOptions.SectionName));
+
         services.AddOptions<OpenMeteoOptions>()
             .Bind(configuration.GetSection(OpenMeteoOptions.SectionName));
 
@@ -71,6 +74,19 @@ public static class InfrastructureServiceCollectionExtensions
         });
         services.AddKeyedTransient<IGeocoder>(
             ProviderKeys.Nominatim, static (provider, _) => provider.GetRequiredService<NominatimGeocodingClient>());
+
+        services.AddHttpClient<BanGeocodingClient>((provider, client) =>
+        {
+            var options = provider.GetRequiredService<IOptions<BanOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl);
+        })
+        .AddResilienceHandler("ban", (builder, context) =>
+        {
+            var options = context.ServiceProvider.GetRequiredService<IOptions<ResilienceOptions>>().Value;
+            ResiliencePipelines.Configure(builder, options.Ban);
+        });
+        services.AddKeyedTransient<IGeocoder>(
+            ProviderKeys.Ban, static (provider, _) => provider.GetRequiredService<BanGeocodingClient>());
 
         services.AddHttpClient<OpenMeteoWeatherClient>((provider, client) =>
         {
