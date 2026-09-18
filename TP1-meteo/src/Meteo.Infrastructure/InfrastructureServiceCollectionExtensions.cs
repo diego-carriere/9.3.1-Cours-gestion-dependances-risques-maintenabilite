@@ -51,6 +51,7 @@ public static class InfrastructureServiceCollectionExtensions
         .AddResilienceHandler("nominatim", (builder, context) =>
         {
             var options = context.ServiceProvider.GetRequiredService<IOptions<ResilienceOptions>>().Value;
+            ResiliencePipelines.ConfigureNominatimRateLimiter(builder);
             ResiliencePipelines.Configure(builder, options.Nominatim);
         });
 

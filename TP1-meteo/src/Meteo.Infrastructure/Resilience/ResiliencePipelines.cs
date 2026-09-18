@@ -1,4 +1,5 @@
 using System.Net;
+using System.Threading.RateLimiting;
 using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
@@ -35,6 +36,22 @@ internal static class ResiliencePipelines
             })
             .AddTimeout(options.AttemptTimeout);
     }
+
+    /// <summary>
+    /// Politique d'usage Nominatim : 1 requête par seconde maximum. Placé en dehors
+    /// (avant) du reste du pipeline : une petite file d'attente absorbe un léger pic en
+    /// mettant en attente plutôt qu'en rejetant, sans compter ce temps d'attente dans le
+    /// timeout total de la tentative. En pratique le cache de géocodage (24 h) garde ce
+    /// budget très large : voir Meteo.Application.Forecasting.GetForecastUseCase.
+    /// </summary>
+    public static void ConfigureNominatimRateLimiter(ResiliencePipelineBuilder<HttpResponseMessage> builder) =>
+        builder.AddRateLimiter(new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 1,
+            Window = TimeSpan.FromSeconds(1),
+            QueueLimit = 4,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+        }));
 
     // Ne réessaie jamais un circuit ouvert (on veut échouer vite, pas retarder l'échec), ni
     // un 4xx (une adresse introuvable ou une requête malformée n'est pas transitoire — et
