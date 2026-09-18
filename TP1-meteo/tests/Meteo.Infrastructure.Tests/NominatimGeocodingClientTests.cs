@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Meteo.Infrastructure.Tests;
 
-public sealed class GeocodingClientTests
+public sealed class NominatimGeocodingClientTests
 {
     private const string ResponseWithOneMatch = """
         [
@@ -20,13 +20,13 @@ public sealed class GeocodingClientTests
         ]
         """;
 
-    private static (GeocodingClient Client, StubHttpMessageHandler Handler) CreateSut(
+    private static (NominatimGeocodingClient Client, StubHttpMessageHandler Handler) CreateSut(
         string userAgent = "TP1-Meteo-Tests/1.0 (test)")
     {
         var handler = new StubHttpMessageHandler();
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://nominatim.example/") };
         var options = Options.Create(new NominatimOptions { UserAgent = userAgent });
-        var client = new GeocodingClient(httpClient, options, NullLogger<GeocodingClient>.Instance);
+        var client = new NominatimGeocodingClient(httpClient, options, NullLogger<NominatimGeocodingClient>.Instance);
         return (client, handler);
     }
 
@@ -93,7 +93,7 @@ public sealed class GeocodingClientTests
 }
 
 /// <summary>Instancie le contrat de substituabilité partagé (LSP) pour le vrai client Nominatim.</summary>
-public sealed class GeocodingClientContractTests : GeocoderContractTests
+public sealed class NominatimGeocodingClientContractTests : GeocoderContractTests
 {
     protected override Meteo.Domain.Abstractions.IGeocoder CreateSutReturningAddressNotFound()
     {
@@ -103,6 +103,6 @@ public sealed class GeocodingClientContractTests : GeocoderContractTests
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://nominatim.example/") };
         var options = Options.Create(new NominatimOptions { UserAgent = "TP1-Meteo-Tests/1.0 (test)" });
 
-        return new GeocodingClient(httpClient, options, NullLogger<GeocodingClient>.Instance);
+        return new NominatimGeocodingClient(httpClient, options, NullLogger<NominatimGeocodingClient>.Instance);
     }
 }

@@ -20,15 +20,15 @@ namespace Meteo.Infrastructure.Geocoding;
 /// Contrat de substituabilité (LSP) : ne laisse jamais fuir d'exception HTTP ou Polly, même
 /// quand le circuit breaker est ouvert — tout devient un <see cref="Result{T}"/> en échec.
 /// </summary>
-internal sealed partial class GeocodingClient : IGeocoder
+internal sealed partial class NominatimGeocodingClient : IGeocoder
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _httpClient;
     private readonly NominatimOptions _options;
-    private readonly ILogger<GeocodingClient> _logger;
+    private readonly ILogger<NominatimGeocodingClient> _logger;
 
-    public GeocodingClient(HttpClient httpClient, IOptions<NominatimOptions> options, ILogger<GeocodingClient> logger)
+    public NominatimGeocodingClient(HttpClient httpClient, IOptions<NominatimOptions> options, ILogger<NominatimGeocodingClient> logger)
     {
         _httpClient = httpClient;
         _options = options.Value;

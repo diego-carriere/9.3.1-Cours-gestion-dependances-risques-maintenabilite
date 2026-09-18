@@ -5,7 +5,7 @@ namespace Meteo.Domain.Abstractions;
 
 /// <summary>
 /// Résout une <see cref="Address"/> en <see cref="GeoLocation"/>. Déclaré dans le Domaine,
-/// implémenté par Meteo.Infrastructure.Geocoding.GeocodingClient (Nominatim) : c'est
+/// implémenté par Meteo.Infrastructure.Geocoding.NominatimGeocodingClient (Nominatim) : c'est
 /// l'inversion de dépendance de Support J1 — l'interface vit dans la couche interne, son
 /// implémentation dans la couche externe, et le compilateur empêche l'inverse.
 ///

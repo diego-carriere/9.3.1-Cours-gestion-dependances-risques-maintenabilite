@@ -6,9 +6,9 @@ namespace Meteo.TestSupport;
 
 /// <summary>
 /// Contrat de substituabilité (Liskov) commun à toute implémentation d'<see cref="IGeocoder"/>,
-/// réelle ou fake : hérité par les tests de <c>FakeGeocoder</c> et de
-/// <c>GeocodingClient</c> (Meteo.Infrastructure.Tests). Si une implémentation laisse fuir
-/// une exception pour un échec attendu, ce test échoue quel que soit le côté du contrat.
+/// réelle ou fake : hérité par les tests de <c>FakeGeocoder</c> et de chaque client HTTP
+/// (Meteo.Infrastructure.Tests). Si une implémentation laisse fuir une exception pour un
+/// échec attendu, ce test échoue quel que soit le côté du contrat.
 /// </summary>
 public abstract class GeocoderContractTests
 {

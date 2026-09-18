@@ -43,7 +43,7 @@ public static class InfrastructureServiceCollectionExtensions
         // jetables, mais le pool de HttpMessageHandler qui les sert est mutualisé par la
         // fabrique — elle-même singleton. Voir le README pour l'argument complet sur
         // pourquoi ce n'est PAS un singleton malgré l'intuition de départ.
-        services.AddHttpClient<IGeocoder, GeocodingClient>((provider, client) =>
+        services.AddHttpClient<IGeocoder, NominatimGeocodingClient>((provider, client) =>
         {
             var options = provider.GetRequiredService<IOptions<NominatimOptions>>().Value;
             client.BaseAddress = new Uri(options.BaseUrl);
@@ -55,7 +55,7 @@ public static class InfrastructureServiceCollectionExtensions
             ResiliencePipelines.Configure(builder, options.Nominatim);
         });
 
-        services.AddHttpClient<IWeatherProvider, WeatherClient>((provider, client) =>
+        services.AddHttpClient<IWeatherProvider, OpenMeteoWeatherClient>((provider, client) =>
         {
             var options = provider.GetRequiredService<IOptions<OpenMeteoOptions>>().Value;
             client.BaseAddress = new Uri(options.BaseUrl);

@@ -41,7 +41,7 @@ public sealed class ResilienceTests
             BaseUrl = "https://nominatim.example/",
         }));
 
-        services.AddHttpClient<IGeocoder, GeocodingClient>((provider, client) =>
+        services.AddHttpClient<IGeocoder, NominatimGeocodingClient>((provider, client) =>
             {
                 client.BaseAddress = new Uri(provider.GetRequiredService<IOptions<NominatimOptions>>().Value.BaseUrl);
             })

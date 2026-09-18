@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 
 namespace Meteo.Infrastructure.Tests;
 
-public sealed class WeatherClientTests
+public sealed class OpenMeteoWeatherClientTests
 {
     private static readonly GeoLocation Ales = new(44.1258, 4.0806, "Alès");
 
@@ -23,11 +23,11 @@ public sealed class WeatherClientTests
         }
         """;
 
-    private static (WeatherClient Client, StubHttpMessageHandler Handler) CreateSut()
+    private static (OpenMeteoWeatherClient Client, StubHttpMessageHandler Handler) CreateSut()
     {
         var handler = new StubHttpMessageHandler();
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://open-meteo.example/") };
-        var client = new WeatherClient(httpClient, Options.Create(new OpenMeteoOptions()), NullLogger<WeatherClient>.Instance);
+        var client = new OpenMeteoWeatherClient(httpClient, Options.Create(new OpenMeteoOptions()), NullLogger<OpenMeteoWeatherClient>.Instance);
         return (client, handler);
     }
 

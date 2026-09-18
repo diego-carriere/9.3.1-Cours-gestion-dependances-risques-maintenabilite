@@ -13,18 +13,18 @@ namespace Meteo.Infrastructure.Weather;
 
 /// <summary>
 /// Implémente <see cref="IWeatherProvider"/> par un appel à Open-Meteo. Voir
-/// <see cref="Meteo.Infrastructure.Geocoding.GeocodingClient"/> pour la note sur
+/// <see cref="Meteo.Infrastructure.Geocoding.NominatimGeocodingClient"/> pour la note sur
 /// l'accessibilité <c>internal</c> et le contrat de substituabilité.
 /// </summary>
-internal sealed partial class WeatherClient : IWeatherProvider
+internal sealed partial class OpenMeteoWeatherClient : IWeatherProvider
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _httpClient;
     private readonly OpenMeteoOptions _options;
-    private readonly ILogger<WeatherClient> _logger;
+    private readonly ILogger<OpenMeteoWeatherClient> _logger;
 
-    public WeatherClient(HttpClient httpClient, IOptions<OpenMeteoOptions> options, ILogger<WeatherClient> logger)
+    public OpenMeteoWeatherClient(HttpClient httpClient, IOptions<OpenMeteoOptions> options, ILogger<OpenMeteoWeatherClient> logger)
     {
         _httpClient = httpClient;
         _options = options.Value;

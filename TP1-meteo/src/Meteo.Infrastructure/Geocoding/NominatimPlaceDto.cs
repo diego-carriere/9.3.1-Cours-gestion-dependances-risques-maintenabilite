@@ -6,7 +6,7 @@ namespace Meteo.Infrastructure.Geocoding;
 /// Forme brute d'un résultat Nominatim. Interne : ne franchit jamais la frontière du
 /// Domaine (voir <see cref="Meteo.Domain.Model.GeoLocation"/>). Nominatim renvoie lat/lon
 /// en chaînes, toujours à séparateur point — d'où le parsing explicite en culture
-/// invariante côté <see cref="GeocodingClient"/>.
+/// invariante côté <see cref="NominatimGeocodingClient"/>.
 /// </summary>
 internal sealed record NominatimPlaceDto
 {
