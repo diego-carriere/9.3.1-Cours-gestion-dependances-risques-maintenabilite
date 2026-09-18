@@ -1,4 +1,5 @@
 using System.Net;
+using Meteo.Domain.Abstractions;
 using Meteo.Domain.Model;
 using Meteo.Infrastructure.Weather;
 using Meteo.TestSupport;
@@ -8,10 +9,11 @@ using Microsoft.Extensions.Options;
 namespace Meteo.Infrastructure.Tests;
 
 /// <summary>
-/// Ce qui est propre à Open-Meteo (tableaux parallèles à zipper, unité lue par nom de
-/// variable). Le comportement partagé avec tout <see cref="Meteo.Domain.Abstractions.IWeatherProvider"/>
-/// (culture invariante, jamais d'exception, 5xx -> WeatherUnavailable) vit dans le contrat
-/// HTTP partagé — voir OpenMeteoWeatherProviderContractTests dans ce même projet.
+/// Ce qui est propre à Open-Meteo (tableaux parallèles à zipper, lecture d'une variable
+/// configurée par nom). Le comportement partagé avec tout
+/// <see cref="Meteo.Domain.Abstractions.IWeatherProvider"/> HTTP (réponse valide, panne
+/// amont, réponse vide, culture invariante) vit dans
+/// <see cref="OpenMeteoWeatherProviderContractTests"/>.
 /// </summary>
 public sealed class OpenMeteoWeatherClientTests
 {
@@ -70,17 +72,6 @@ public sealed class OpenMeteoWeatherClientTests
     }
 
     [Fact]
-    public async Task GetForecastAsync_reads_the_unit_from_hourly_units_by_variable_name()
-    {
-        var (sut, handler) = CreateSut();
-        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ResponseBody) });
-
-        var result = await sut.GetForecastAsync(Ales, CancellationToken.None);
-
-        Assert.Equal("°C", result.Value.Unit);
-    }
-
-    [Fact]
     public async Task GetForecastAsync_reads_a_differently_configured_hourly_variable()
     {
         // Le bug corrigé au TP2 : au TP1, la désérialisation restait câblée sur
@@ -108,4 +99,30 @@ public sealed class OpenMeteoWeatherClientTests
         Assert.Equal(340.2, result.Value.Points[0].Value);
         Assert.Equal("W/m²", result.Value.Unit);
     }
+}
+
+/// <summary>
+/// Instancie le contrat HTTP partagé (<see cref="HttpWeatherProviderContractTests"/>) pour
+/// le vrai client Open-Meteo : réponse valide, panne amont, réponse vide, culture invariante.
+/// </summary>
+public sealed class OpenMeteoWeatherProviderContractTests : HttpWeatherProviderContractTests
+{
+    protected override IWeatherProvider CreateSut(StubHttpMessageHandler handler)
+    {
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://open-meteo.example/") };
+        var options = Options.Create(new OpenMeteoOptions());
+        return new OpenMeteoWeatherClient(httpClient, options, NullLogger<OpenMeteoWeatherClient>.Instance);
+    }
+
+    protected override string ValidForecastBody => """
+        {
+          "hourly_units": { "temperature_2m": "°C" },
+          "hourly": {
+            "time": ["2026-09-18T00:00", "2026-09-18T01:00"],
+            "temperature_2m": [8.0, 12.5]
+          }
+        }
+        """;
+
+    protected override string EmptyBody => "not json";
 }

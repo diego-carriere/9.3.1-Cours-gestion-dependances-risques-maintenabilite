@@ -1,6 +1,6 @@
 using System.Net;
+using Meteo.Domain.Abstractions;
 using Meteo.Domain.Model;
-using Meteo.Domain.Results;
 using Meteo.Infrastructure.Geocoding;
 using Meteo.TestSupport;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -8,6 +8,11 @@ using Microsoft.Extensions.Options;
 
 namespace Meteo.Infrastructure.Tests;
 
+/// <summary>
+/// Ce qui est propre à Nominatim (en-tête User-Agent). Le contrat partagé avec tout
+/// <see cref="IGeocoder"/> HTTP (adresse valide, introuvable, réponse vide, accents) vit
+/// dans <see cref="NominatimGeocodingClientContractTests"/>.
+/// </summary>
 public sealed class NominatimGeocodingClientTests
 {
     private const string ResponseWithOneMatch = """
@@ -31,44 +36,6 @@ public sealed class NominatimGeocodingClientTests
     }
 
     [Fact]
-    public async Task ResolveAsync_maps_a_matching_place_to_a_GeoLocation()
-    {
-        var (sut, handler) = CreateSut();
-        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ResponseWithOneMatch) });
-
-        var result = await sut.ResolveAsync(Address.Create("Alès").Value, CancellationToken.None);
-
-        Assert.True(result.IsSuccess);
-        Assert.Equal(44.1258858, result.Value.Latitude, precision: 6);
-        Assert.Equal(4.0806915, result.Value.Longitude, precision: 6);
-        Assert.Equal("Alès, Gard, Occitanie, France métropolitaine, France", result.Value.DisplayName);
-    }
-
-    [Fact]
-    public async Task ResolveAsync_returns_AddressNotFound_for_an_empty_result_array()
-    {
-        var (sut, handler) = CreateSut();
-        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("[]") });
-
-        var result = await sut.ResolveAsync(Address.Create("nowhere").Value, CancellationToken.None);
-
-        Assert.True(result.IsFailure);
-        Assert.Equal(ForecastErrorKind.AddressNotFound, result.Error.Kind);
-    }
-
-    [Fact]
-    public async Task ResolveAsync_returns_GeocodingUnavailable_for_a_persisting_server_error()
-    {
-        var (sut, handler) = CreateSut();
-        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.InternalServerError));
-
-        var result = await sut.ResolveAsync(Address.Create("Alès").Value, CancellationToken.None);
-
-        Assert.True(result.IsFailure);
-        Assert.Equal(ForecastErrorKind.GeocodingUnavailable, result.Error.Kind);
-    }
-
-    [Fact]
     public async Task ResolveAsync_sends_the_configured_User_Agent_on_every_request()
     {
         var (sut, handler) = CreateSut(userAgent: "TP1-Meteo/1.0 (formation EMA)");
@@ -79,30 +46,36 @@ public sealed class NominatimGeocodingClientTests
         var sent = Assert.Single(handler.Requests);
         Assert.Equal("TP1-Meteo/1.0 (formation EMA)", sent.Headers.UserAgent.ToString());
     }
-
-    [Fact]
-    public async Task ResolveAsync_never_throws_when_the_response_body_is_malformed()
-    {
-        var (sut, handler) = CreateSut();
-        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("not json") });
-
-        var result = await sut.ResolveAsync(Address.Create("Alès").Value, CancellationToken.None);
-
-        Assert.True(result.IsFailure);
-    }
 }
 
-/// <summary>Instancie le contrat de substituabilité partagé (LSP) pour le vrai client Nominatim.</summary>
-public sealed class NominatimGeocodingClientContractTests : GeocoderContractTests
+/// <summary>
+/// Instancie le contrat HTTP partagé (<see cref="HttpGeocoderContractTests"/>, TP2 demande
+/// n°3) pour le vrai client Nominatim : adresse valide, introuvable, réponse vide, accents.
+/// </summary>
+public sealed class NominatimGeocodingClientContractTests : HttpGeocoderContractTests
 {
-    protected override Meteo.Domain.Abstractions.IGeocoder CreateSutReturningAddressNotFound()
-    {
-        var handler = new StubHttpMessageHandler();
-        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("[]") });
+    private const string DisplayName = "Alès, Gard, Occitanie, France métropolitaine, France";
 
+    protected override IGeocoder CreateSut(StubHttpMessageHandler handler)
+    {
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://nominatim.example/") };
         var options = Options.Create(new NominatimOptions { UserAgent = "TP1-Meteo-Tests/1.0 (test)" });
-
         return new NominatimGeocodingClient(httpClient, options, NullLogger<NominatimGeocodingClient>.Instance);
     }
+
+    protected override string ValidMatchBody => $$"""
+        [{ "lat": "44.1258858", "lon": "4.0806915", "display_name": "{{DisplayName}}" }]
+        """;
+
+    protected override (double Latitude, double Longitude) ExpectedCoordinates => (44.1258858, 4.0806915);
+
+    protected override string ExpectedDisplayName => DisplayName;
+
+    protected override string NoMatchBody => "[]";
+
+    protected override string EmptyBody => "not json";
+
+    protected override string AccentedMatchBody => ValidMatchBody;
+
+    protected override string ExpectedAccentedDisplayName => DisplayName;
 }
