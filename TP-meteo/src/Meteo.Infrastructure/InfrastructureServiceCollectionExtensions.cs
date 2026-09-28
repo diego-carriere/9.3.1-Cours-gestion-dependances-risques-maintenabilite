@@ -1,5 +1,7 @@
 using Meteo.Domain.Abstractions;
+using Meteo.Domain.Model;
 using Meteo.Infrastructure.Caching;
+using Meteo.Infrastructure.Demo;
 using Meteo.Infrastructure.Geocoding;
 using Meteo.Infrastructure.Providers;
 using Meteo.Infrastructure.Resilience;
@@ -126,6 +128,24 @@ public static class InfrastructureServiceCollectionExtensions
         // Le port public : sans état propre, transient comme les clients qu'il délègue.
         services.AddTransient<IGeocoder, GeocoderSelector>();
         services.AddTransient<IWeatherProvider, WeatherProviderSelector>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Mode démo (TP3) : enregistre sous <paramref name="serviceKey"/> un géocodeur et un
+    /// fournisseur météo simulés, ainsi que des caches qui ne retiennent rien. Rien n'est
+    /// enregistré sous les ports non keyed, donc le mode réel n'est pas touché. La clé est
+    /// choisie par le composition root, pas par cette couche.
+    /// </summary>
+    public static IServiceCollection AddSimulatedProviders(this IServiceCollection services, string serviceKey)
+    {
+        services.TryAddSingleton<IClock, SystemClock>(); // DemoWeatherProvider en dépend ; idempotent.
+
+        services.AddKeyedTransient<IGeocoder, DemoGeocoder>(serviceKey);
+        services.AddKeyedTransient<IWeatherProvider, DemoWeatherProvider>(serviceKey);
+        services.AddKeyedSingleton<ICache<GeoLocation>, NullCache<GeoLocation>>(serviceKey);
+        services.AddKeyedSingleton<ICache<Forecast>, NullCache<Forecast>>(serviceKey);
 
         return services;
     }
