@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Meteo.Domain\Meteo.Domain.csproj" />
     <ProjectReference Include="..\..\src\Meteo.Application\Meteo.Application.csproj" />
+    <ProjectReference Include="..\Meteo.TestSupport\Meteo.TestSupport.csproj" />
   </ItemGroup>
 
   <ItemGroup>

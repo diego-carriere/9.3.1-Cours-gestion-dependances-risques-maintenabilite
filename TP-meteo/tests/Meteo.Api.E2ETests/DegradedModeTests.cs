@@ -5,9 +5,9 @@ namespace Meteo.Api.E2ETests;
 
 /// <summary>
 /// Prouve de bout en bout ce que Support J1 appelle "circuit breaker et cache pour un mode
-/// dégradé" (stratégie SPOF), et le bénéfice concret du cache de géocodage face à la
-/// politique de débit de Nominatim (1 req/s). MeteoApiFactory réduit WeatherFreshness à
-/// 1 ms pour ces tests : la fraîcheur du géocodage (24 h) reste au défaut.
+/// dégradé" (stratégie SPOF). MeteoApiFactory réduit WeatherFreshness à 1 ms pour ces tests :
+/// la fraîcheur du géocodage (24 h) reste au défaut. Le bénéfice du cache de géocodage face à
+/// la politique de débit de Nominatim (1 req/s) est prouvé par GeocodingCacheTests (TP3).
 /// </summary>
 public sealed class DegradedModeTests : ApiTestBase
 {
@@ -49,21 +49,6 @@ public sealed class DegradedModeTests : ApiTestBase
         Assert.Equal("cache-stale", second.Headers.GetValues("X-Data-Source").Single());
 
         // Le géocodage, lui, n'a jamais été réappelé : la fraîcheur (24h) a tenu.
-        Assert.Equal(1, Factory.Upstream.CallCountFor(NominatimHost));
-    }
-
-    [Fact]
-    public async Task Two_identical_requests_only_contact_Nominatim_once()
-    {
-        Factory.Upstream.EnqueueFor(NominatimHost, Json(NominatimMatch));
-        Factory.Upstream.EnqueueFor(OpenMeteoHost, Json(OpenMeteoForecast));
-        Factory.Upstream.EnqueueFor(OpenMeteoHost, Json(OpenMeteoForecast));
-
-        await Client.GetAsync(new Uri("/forecast?address=Alès", UriKind.Relative));
-        await Task.Delay(20);
-        var second = await Client.GetAsync(new Uri("/forecast?address=Alès", UriKind.Relative));
-
-        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
         Assert.Equal(1, Factory.Upstream.CallCountFor(NominatimHost));
     }
 

@@ -58,6 +58,17 @@ public class ArchitectureTests
             $"Type(s) de type fournisseur (DTO) trouvés hors de Meteo.Infrastructure : {string.Join(", ", offending)}");
     }
 
+    [Fact]
+    public void Domain_and_Application_hold_no_mutable_static_state()
+    {
+        var types = typeof(Meteo.Domain.Model.Address).Assembly.GetTypes()
+            .Concat(Assembly.Load("Meteo.Application").GetTypes());
+
+        var offending = Meteo.TestSupport.StaticStateInspector.FindMutableStaticFields(types);
+
+        Assert.True(offending.Count == 0, $"État statique mutable (TP3, « pas de static ») : {string.Join(", ", offending)}");
+    }
+
     private static List<string?> ReferencesOutsideBcl(Assembly assembly) =>
         assembly.GetReferencedAssemblies()
             .Where(a => a.Name is not null
