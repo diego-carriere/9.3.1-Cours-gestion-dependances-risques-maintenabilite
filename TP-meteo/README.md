@@ -11,15 +11,15 @@ services externes : un **géocodeur** (adresse → lat/lon) puis un **fournisseu
 - **TP3** (`documentation/TP3.md`) : mode démo, cache de géocodage prouvé, format de sortie unifié — voir
   [TP3](#tp3--mode-démo-cache-et-format-unifié).
 
-Ce README est la pièce à charge des deux TP : il justifie chaque choix architectural face
+Ce README est la pièce à charge des trois TP : il justifie chaque choix architectural face
 au support du Jour 1 (`../Support J1.md`), et doit permettre de défendre le projet sans
-relire le code. Les commits sont préfixés `[TP1]` ou `[TP2]` selon le TP qu'ils servent.
+relire le code. Les commits sont préfixés `[TP1]`, `[TP2]` ou `[TP3]` selon le TP qu'ils servent.
 
 ## Lancer et tester
 
 ```bash
 dotnet build                     # 0 avertissement : TreatWarningsAsErrors=true
-dotnet test                      # 106 tests, hors-ligne, déterministes
+dotnet test                      # 140 tests, hors-ligne, déterministes
 
 # User-Agent identifiable fourni par appsettings.json (Nominatim et MET Norway renvoient
 # 403 sans lui). L'app refuse de démarrer si l'un d'eux est vide ; surchargeable :
@@ -30,6 +30,7 @@ MetNo__UserAgent="MonApp/1.0 mon.email@exemple.fr" dotnet run --project src/Mete
 Providers__Geocoder=ban Providers__Weather=met-no dotnet run --project src/Meteo.Api
 
 curl "http://localhost:5000/forecast?address=Alès"
+curl "http://localhost:5000/forecast?address=Alès&demo=true"   # mode démo : aucun appel externe
 curl -i "http://localhost:5000/forecast"                # 400
 curl -i "http://localhost:5000/forecast?address=zzzzzz" # 404
 curl -i "http://localhost:5000/health"                  # 200
@@ -97,6 +98,9 @@ ne référence ni ASP.NET Core ni Polly.
 | `IWeatherProvider` keyed `open-meteo`/`met-no` → `OpenMeteoWeatherClient`/`MetNoWeatherClient` | **Transient** (`AddHttpClient`) | Idem. |
 | `IClock` → `SystemClock` | **Singleton** | Sans état, aucune dépendance scoped → zéro risque de dépendance captive. |
 | `ICache<T>` → `MemoryCache<T>` | **Singleton** | Un cache par requête ne cache rien. |
+| `IGetForecastUseCase` keyed `demo` → `GetForecastUseCase` | **Scoped** | Même classe, seconde composition sur les ports simulés (TP3). |
+| `IGeocoder`/`IWeatherProvider` keyed `demo` → `DemoGeocoder`/`DemoWeatherProvider` | **Transient** | Sans état, aucun `HttpClient` (TP3). |
+| `ICache<GeoLocation>`/`ICache<Forecast>` keyed `demo` → `NullCache<T>` | **Singleton** | Sans état : ne retient rien (TP3). |
 | `IOptions<NominatimOptions>` / `BanOptions` / `OpenMeteoOptions` / `MetNoOptions` / `ResilienceOptions` | **Singleton** | Configuration lue une fois ; les options validées au démarrage ne sont jamais revalidées à chaud (voir TP2). |
 | Pipeline Polly (retry/breaker/timeout/limiteur) | **Singleton** (géré par le framework) | Un disjoncteur réinitialisé à chaque requête ne s'ouvre jamais. |
 | Pool de `HttpMessageHandler` | **Singleton** (géré par `IHttpClientFactory`) | Sockets réutilisés, rotation DNS toutes les 2 min. |
@@ -127,7 +131,8 @@ le revérifie à chaque exécution de la suite de tests.
 ## Composition root et injection
 
 `src/Meteo.Api/Program.cs` est le **seul** fichier qui relie une implémentation à une
-abstraction (`AddApplication()` + `AddInfrastructure(configuration)`). Cette règle est
+abstraction (`AddApplication()` + `AddInfrastructure(configuration)`, puis pour le mode démo du
+TP3 `AddSimulatedProviders("demo")` + `AddKeyedForecastUseCase("demo")`). Cette règle est
 mécanique, pas seulement documentée :
 
 1. Les adaptateurs d'Infrastructure (`NominatimGeocodingClient`, `BanGeocodingClient`,
@@ -149,7 +154,7 @@ honnêtement, pas cochées de façade.
 | Principe | Où |
 |---|---|
 | **S**RP | `NominatimGeocodingClient` ne fait que parler HTTP à Nominatim et traduire panne/JSON en `Result<GeoLocation>`. `GetForecastUseCase` orchestre sans aucune E/S directe. |
-| **O**CP | Mis à l'épreuve par le TP2 : la BAN et MET Norway sont chacun une classe `IGeocoder`/`IWeatherProvider` de plus, enregistrée sous une clé dans `AddInfrastructure`. Ports, Application et Présentation n'ont pas été modifiés pour les accueillir. |
+| **O**CP | Mis à l'épreuve par le TP2 : la BAN et MET Norway sont chacun une classe `IGeocoder`/`IWeatherProvider` de plus, enregistrée sous une clé dans `AddInfrastructure`. Ports, Application et Présentation n'ont pas été modifiés pour les accueillir. De nouveau par le TP3 : le mode démo, c'est deux adaptateurs et un cache nul de plus, `GetForecastUseCase` n'a pas changé. |
 | **L**SP | `GeocoderContractTests`/`HttpGeocoderContractTests` et leurs équivalents météo (dans `Meteo.TestSupport`) sont hérités par les tests du fake et de chaque vrai client : aucune implémentation ne peut laisser fuir une exception pour un échec attendu. |
 | **I**SP | `IGeocoder` et `IWeatherProvider` : un port, une méthode. L'endpoint ne dépend que d'`IGetForecastUseCase`, jamais des ports du Domaine directement. |
 | **D**IP | `IGeocoder`/`IWeatherProvider`/`ICache<T>`/`IClock` sont déclarés dans `Meteo.Domain`, implémentés dans `Meteo.Infrastructure`. Le compilateur rend impossible au cas d'usage de nommer une implémentation concrète. |
@@ -177,12 +182,12 @@ compilateur.
 Pipeline Polly par client typé : timeout total → retry (exponentiel + jitter, jamais sur
 4xx ni sur un disjoncteur déjà ouvert) → circuit breaker → timeout par tentative. Nominatim
 reçoit en plus un limiteur à 1 req/s (sa politique d'usage l'exige) — en pratique le cache
-de géocodage (24h) le rend presque inutile : `DegradedModeTests` prouve que deux requêtes
-identiques ne contactent Nominatim qu'une fois.
+de géocodage (24h) le rend presque inutile : `GeocodingCacheTests` prouve que deux requêtes
+identiques ne contactent le géocodeur actif (Nominatim ou BAN) qu'une fois.
 
 `GetForecastUseCase` compare l'horodatage des entrées de cache à `IClock.UtcNow` (jamais
 `DateTimeOffset.UtcNow` en dur) pour décider : cache frais → pas d'appel réseau ; échec +
-cache périmé → réponse `200` avec `degraded: true` ; échec sans rien d'utilisable → `503`.
+cache périmé → réponse `200` marquée `X-Data-Source: cache-stale` ; échec sans rien d'utilisable → `503`.
 C'est la stratégie SPOF de Support J1 : *"circuit breaker et cache pour un mode dégradé"*.
 
 ## Dépendances cachées neutralisées
@@ -296,26 +301,96 @@ que ses corps de réponse simulés (`StubHttpMessageHandler`).
   port n'expose un DTO.
 - `ArchitectureTests.Domain_and_Application_declare_no_provider_DTO_type`.
 - `ProviderSwitchingTests.Forecast_has_the_same_public_shape_for_every_provider_combination` :
-  les 4 combinaisons de fournisseurs produisent la même réponse publique, sans aucun nom
-  de champ propriétaire (`features`, `timeseries`, `temperature_2m`, `display_name`...).
+  les 4 combinaisons de fournisseurs produisent la même réponse publique (même signature
+  `JsonShape` depuis le TP3), sans aucun nom de champ propriétaire (`features`,
+  `timeseries`, `temperature_2m`, `display_name`...).
 - Les noms de variable sont traduits vers un vocabulaire canonique
   (`WeatherVariables`) : `temperature_2m` (Open-Meteo) et `air_temperature` (MET Norway)
-  sortent tous deux en `air_temperature`. `OpenMeteo:HourlyVariable` accepte aussi
-  `shortwave_radiation` (l'exemple du TP1), exposé comme tel ; une variable sans nom
-  canonique empêche le démarrage plutôt que d'être servie sous une étiquette fausse.
-  Seule `temperature_2m` existe chez les deux fournisseurs météo : c'est la valeur par
-  défaut, à garder pour qu'une bascule ne change pas le sens de la réponse.
+  sortent tous deux en `air_temperature`. L'adaptateur Open-Meteo sait aussi lire
+  `shortwave_radiation` (l'exemple du TP1), mais depuis le TP3 la configuration n'accepte
+  plus que `temperature_2m` : le contrat public nomme son champ `temperatureCelsius` (voir
+  TP3, point 1).
+
+## TP3 — mode démo, cache et format unifié
+
+Même mesure qu'au TP2 : le coût du changement. **Ajouté** : deux adaptateurs simulés et un
+cache nul (Infrastructure), une méthode d'enregistrement par couche, un mapper de réponse
+(Présentation). **Modifié** : le contrat de réponse (c'est la demande), le validateur
+Open-Meteo et l'endpoint (choix de la composition). `GetForecastUseCase`, les ports et les
+quatre adaptateurs réels : aucune ligne modifiée.
+
+### 1. Format de sortie unifié
+
+```json
+{
+  "address": "Alès",
+  "latitude": 44.1258858,
+  "longitude": 4.0806915,
+  "hourly": [ { "time": "2026-09-18T15:00:00Z", "temperatureCelsius": 27.1 } ]
+}
+```
+
+- Les champs de `ForecastResponse` ont été renommés vers ces quatre noms. `resolvedPlace`,
+  `variable`, `unit`, `degraded` et `dataAsOf` sortent du corps. L'origine des données reste
+  en en-têtes (`X-Data-Source: live | cache-stale | demo`, plus `Warning` si dégradé), et leur
+  date passe dans `Last-Modified`.
+- `address` est l'adresse demandée (normalisée), et non le libellé du géocodeur : c'est la
+  seule valeur identique quel que soit le fournisseur.
+- Noms JSON fixés par `[JsonPropertyName]` plutôt que déduits de la politique de nommage de
+  l'hôte : une dépendance cachée de moins (Support J1).
+- `time` est un `DateTime` UTC, parce que `System.Text.Json` écrit un `DateTimeOffset` UTC
+  `+00:00` et non `Z`.
+- `temperatureCelsius` fige la variable. `OpenMeteoOptionsValidator` refuse donc
+  `shortwave_radiation` au démarrage, et `ForecastResponseMapper` lève (500, bug) si une autre
+  variable ou unité l'atteignait malgré tout.
+- Un seul `ForecastResponseMapper`, emprunté par le mode réel et le mode démo. Prouvé par
+  `JsonShape` (e2e), qui réduit une réponse à ses chemins et types JSON : les quatre
+  combinaisons de fournisseurs et le mode démo ont exactement la même signature.
+
+### 2. Mode démo : le même cas d'usage, composé deux fois
+
+```csharp
+builder.Services.AddSimulatedProviders(ForecastEndpoint.DemoServiceKey);  // ports simulés, sous clé
+builder.Services.AddKeyedForecastUseCase(ForecastEndpoint.DemoServiceKey); // GetForecastUseCase câblé dessus
+```
+
+- `DemoGeocoder` et `DemoWeatherProvider` sont deux implémentations de plus des ports
+  existants, sans `HttpClient`. Leurs données sont déterministes : les coordonnées de
+  l'exemple du brief, et 24 points horaires calculés depuis `IClock`.
+- `NullCache<T>` (objet nul) : la démo ne lit ni n'écrit le cache réel. Sans lui, une démo sur
+  « Alès » y écrirait des coordonnées fictives, servies pendant 24 h aux vraies requêtes.
+- L'endpoint reçoit les deux compositions par injection (`[FromKeyedServices]`), sans `new` ni
+  localisateur. `demo` ne choisit que celle qui sert la requête ; la validation, le mapping et
+  les erreurs sont communs.
+- `DemoModeTests` : aucune requête sortante (FakeUpstream lèverait), 400 sans adresse, 400
+  pour `demo=maybe`, aucune fuite vers le cache réel dans un sens comme dans l'autre.
+
+### 3. Cache de géocodage : déjà là depuis le TP1, désormais prouvé
+
+`GetForecastUseCase` passe par `ICache<GeoLocation>`, un singleton DI et non un champ
+statique : deux requêtes successives pour une même adresse ne contactent le géocodeur actif
+qu'une fois. Le TP3 n'ajoute que des preuves :
+
+- `GeocodingCacheTests` : pour Nominatim **et** la BAN, deux requêtes donnent un appel. Et
+  « Alès » puis « ␣␣ALÈS␣␣ » donnent aussi un seul appel (`Address.CacheKey`).
+- **Pas de static** : `StaticStateInspector` refuse tout champ statique mutable dans Domain,
+  Application et Infrastructure. `CacheContractTests.Two_instances_never_share_entries`
+  complète la preuve.
+- **Le cache peut évoluer** : `CacheContractTests` est héritée par `MemoryCache<T>` et par le
+  fake `InMemoryCache<T>`. Passer à un cache distribué demande une classe `ICache<T>`, qui
+  hérite de la suite, et une ligne changée dans `AddInfrastructure`. Ni le cas d'usage ni ses
+  tests ne bougent.
 
 ## Tests
 
 | Projet | Nature | Compte |
 |---|---|---|
-| `Meteo.Domain.Tests` | unitaire + architecture | 12 |
-| `Meteo.Application.Tests` | unitaire (fakes) | 13 |
-| `Meteo.Infrastructure.Tests` | unitaire HTTP (sans réseau), contrats par port, sélection de fournisseur, isolation des DTO, résilience | 56 |
-| `Meteo.Api.E2ETests` | e2e en mémoire (transport simulé), dont bascule de fournisseur à chaud | 25 |
+| `Meteo.Domain.Tests` | unitaire + architecture (dont « pas de static ») | 13 |
+| `Meteo.Application.Tests` | unitaire (fakes), contrat du fake de cache | 18 |
+| `Meteo.Infrastructure.Tests` | unitaire HTTP (sans réseau), contrats par port et de cache, sélection de fournisseur, isolation des DTO, résilience, adaptateurs démo, « pas de static » | 69 |
+| `Meteo.Api.E2ETests` | e2e en mémoire (transport simulé), dont bascule de fournisseur à chaud, mode démo, forme unifiée, cache de géocodage | 40 |
 
-**106 tests, aucun appel réseau, aucun ne dépasse quelques centaines de millisecondes.**
+**140 tests, aucun appel réseau, aucun ne dépasse quelques centaines de millisecondes.**
 
 Le point le plus démonstratif : remplacer les APIs externes en test ne demande de changer
 **aucune** ligne de code de production — seul le `HttpMessageHandler` primaire est
@@ -337,6 +412,18 @@ réel. C'est la preuve, exécutable, que l'IoC/DI rend le code testable.
 - Le délai de bascule dû au cache (voir TP2, point 2) est assumé plutôt que corrigé :
   inclure le fournisseur dans la clé de cache ferait connaître l'Infrastructure à
   l'Application.
+- Le mode démo renvoie toujours les coordonnées de l'exemple du brief (Alès), quelle que
+  soit l'adresse : il montre la forme de la réponse, pas une géographie simulée.
+- Deux requêtes *simultanées* pour une adresse absente du cache peuvent chacune appeler le
+  géocodeur : le brief parle d'appels successifs, et verrouiller par clé ajouterait un état
+  partagé pour un gain nul à cette échelle.
+- Pas de cache négatif : une adresse introuvable (404) n'est jamais mise en cache, donc deux
+  requêtes successives pour elle appellent deux fois le géocodeur. Mise en cache 24 h, une
+  adresse créée ou corrigée entre-temps chez le fournisseur resterait introuvable. Un cache
+  négatif à durée courte reste possible, mais il toucherait `GetForecastUseCase`, que le TP3
+  laisse intact.
+- Les réponses d'erreur (400/404/503/504) restent en `application/problem+json`, hors du
+  format unifié du TP3, qui décrit la réponse de prévision.
 - Le `Dockerfile` suit le patron multi-étapes standard .NET ; il est construit par le CI
   (`.github/workflows/ci.yml`), pas vérifié localement (Docker absent de l'environnement
   de développement).
