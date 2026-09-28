@@ -31,7 +31,9 @@ public static class InfrastructureServiceCollectionExtensions
             .Bind(configuration.GetSection(BanOptions.SectionName));
 
         services.AddOptions<OpenMeteoOptions>()
-            .Bind(configuration.GetSection(OpenMeteoOptions.SectionName));
+            .BindOnce(configuration.GetSection(OpenMeteoOptions.SectionName))
+            .ValidateOnStart(); // Une variable sans nom canonique empêche l'app de démarrer.
+        services.AddSingleton<IValidateOptions<OpenMeteoOptions>, OpenMeteoOptionsValidator>();
 
         services.AddOptions<MetNoOptions>()
             .BindOnce(configuration.GetSection(MetNoOptions.SectionName))

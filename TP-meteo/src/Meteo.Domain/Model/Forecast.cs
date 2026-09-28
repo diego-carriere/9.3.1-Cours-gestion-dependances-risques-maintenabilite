@@ -10,6 +10,9 @@ namespace Meteo.Domain.Model;
 public static class WeatherVariables
 {
     public const string AirTemperature = "air_temperature";
+
+    /// <summary>Proposée par Open-Meteo seulement : MET Norway (compact) ne la fournit pas.</summary>
+    public const string ShortwaveRadiation = "shortwave_radiation";
 }
 
 /// <summary>Un lieu résolu par le géocodage.</summary>

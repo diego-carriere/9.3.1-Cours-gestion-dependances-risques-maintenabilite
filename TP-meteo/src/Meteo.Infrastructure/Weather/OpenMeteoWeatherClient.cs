@@ -22,6 +22,7 @@ internal sealed partial class OpenMeteoWeatherClient : IWeatherProvider
 
     private readonly HttpClient _httpClient;
     private readonly OpenMeteoOptions _options;
+    private readonly (string Canonical, string DefaultUnit) _variable;
     private readonly ILogger<OpenMeteoWeatherClient> _logger;
 
     public OpenMeteoWeatherClient(HttpClient httpClient, IOptions<OpenMeteoOptions> options, ILogger<OpenMeteoWeatherClient> logger)
@@ -29,6 +30,14 @@ internal sealed partial class OpenMeteoWeatherClient : IWeatherProvider
         _httpClient = httpClient;
         _options = options.Value;
         _logger = logger;
+
+        // Garanti au démarrage par OpenMeteoOptionsValidator ; ne peut manquer ici que si
+        // l'adaptateur est construit hors du conteneur avec une option invalide.
+        if (!OpenMeteoVariables.Known.TryGetValue(_options.HourlyVariable, out _variable))
+        {
+            throw new InvalidOperationException(
+                $"OpenMeteo:HourlyVariable '{_options.HourlyVariable}' n'a pas de nom canonique.");
+        }
     }
 
     public async Task<Result<Forecast>> GetForecastAsync(GeoLocation location, CancellationToken cancellationToken)
@@ -79,16 +88,16 @@ internal sealed partial class OpenMeteoWeatherClient : IWeatherProvider
         }
 
         var points = ZipPoints(payload.Hourly.Time, values);
-        var unit = NormalizeUnit(ReadUnit(payload.HourlyUnits, _options.HourlyVariable));
+        var unit = ReadUnit(payload.HourlyUnits, _options.HourlyVariable) ?? _variable.DefaultUnit;
 
-        return Result.Success(new Forecast(location, WeatherVariables.AirTemperature, unit, points));
+        return Result.Success(new Forecast(location, _variable.Canonical, unit, points));
     }
 
     // La série demandée porte le nom brut Open-Meteo (ex. "temperature_2m") : capturée en
     // JsonExtensionData plutôt qu'en propriété fixe, elle ne franchit jamais cette classe —
     // voir Meteo.Infrastructure.Tests.AdapterIsolationTests.
     private static bool TryReadSeries(
-        Dictionary<string, JsonElement>? series, string variableName, out List<double> values)
+        Dictionary<string, JsonElement>? series, string variableName, out List<double?> values)
     {
         values = [];
 
@@ -100,7 +109,9 @@ internal sealed partial class OpenMeteoWeatherClient : IWeatherProvider
 
         foreach (var item in element.EnumerateArray())
         {
-            values.Add(item.ValueKind == JsonValueKind.Number ? item.GetDouble() : double.NaN);
+            // null pour une heure sans donnée : conservé comme trou, pour garder l'alignement
+            // avec hourly.time, puis ignoré par ZipPoints (même règle que MET Norway).
+            values.Add(item.ValueKind == JsonValueKind.Number ? item.GetDouble() : null);
         }
 
         return true;
@@ -108,10 +119,6 @@ internal sealed partial class OpenMeteoWeatherClient : IWeatherProvider
 
     private static string? ReadUnit(Dictionary<string, string>? units, string variableName) =>
         units is not null && units.TryGetValue(variableName, out var unit) ? unit : null;
-
-    // Open-Meteo annonce "°C" pour temperature_2m : passage direct. Gardé en fonction dédiée
-    // pour que le jour où la variable canonique change de source, un seul endroit traduit.
-    private static string NormalizeUnit(string? rawUnit) => rawUnit ?? "°C";
 
     private string BuildRequestUri(GeoLocation location)
     {
@@ -123,20 +130,21 @@ internal sealed partial class OpenMeteoWeatherClient : IWeatherProvider
         return $"v1/forecast?latitude={latitude}&longitude={longitude}&hourly={_options.HourlyVariable}&timezone=UTC";
     }
 
-    private static List<ForecastPoint> ZipPoints(List<string> times, List<double> values)
+    private static List<ForecastPoint> ZipPoints(List<string> times, List<double?> values)
     {
         var count = Math.Min(times.Count, values.Count);
         var points = new List<ForecastPoint>(count);
 
         for (var i = 0; i < count; i++)
         {
-            if (DateTimeOffset.TryParse(
+            if (values[i] is { } value
+                && DateTimeOffset.TryParse(
                     times[i],
                     CultureInfo.InvariantCulture,
                     DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
                     out var timestamp))
             {
-                points.Add(new ForecastPoint(timestamp, values[i]));
+                points.Add(new ForecastPoint(timestamp, value));
             }
         }
 

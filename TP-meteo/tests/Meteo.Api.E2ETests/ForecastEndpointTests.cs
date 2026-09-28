@@ -59,6 +59,28 @@ public sealed class ForecastEndpointTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Forecast_with_a_missing_hourly_value_still_returns_200()
+    {
+        // Open-Meteo renvoie null pour une heure sans donnée : un NaN qui atteindrait la
+        // sérialisation JSON de la réponse ferait échouer toute la requête.
+        const string withNull = """
+            {
+              "hourly_units": { "temperature_2m": "°C" },
+              "hourly": { "time": ["2026-09-18T00:00", "2026-09-18T01:00"], "temperature_2m": [8.0, null] }
+            }
+            """;
+        Factory.Upstream.EnqueueFor(NominatimHost, Json(NominatimMatch));
+        Factory.Upstream.EnqueueFor(OpenMeteoHost, Json(withNull));
+
+        var response = await Client.GetAsync(new Uri("/forecast?address=Alès", UriKind.Relative));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var payload = await response.Content.ReadFromJsonAsync<ForecastResponse>();
+        Assert.NotNull(payload);
+        Assert.Single(payload.Hourly);
+    }
+
+    [Fact]
     public async Task Forecast_without_an_address_returns_400_problem_json()
     {
         var response = await Client.GetAsync(new Uri("/forecast", UriKind.Relative));
