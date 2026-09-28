@@ -14,11 +14,16 @@ builder.Host.UseDefaultServiceProvider(options =>
     options.ValidateOnBuild = true;
 });
 
-// Le composition root : les deux seules lignes de tout le projet qui relient une
-// implémentation à une abstraction. Rien d'autre, nulle part, ne doit appeler `new` sur
-// une dépendance (Support J1, "le problème du new partout").
+// Le composition root : les seules lignes de tout le projet qui relient une implémentation
+// à une abstraction. Rien d'autre, nulle part, ne doit appeler `new` sur une dépendance
+// (Support J1, "le problème du new partout").
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// TP3, mode démo : le même cas d'usage, composé une seconde fois sous une clé, sur des ports
+// simulés. Aucune ligne du cas d'usage ni des adaptateurs réels n'a changé pour l'accueillir.
+builder.Services.AddSimulatedProviders(ForecastEndpoint.DemoServiceKey);
+builder.Services.AddKeyedForecastUseCase(ForecastEndpoint.DemoServiceKey);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks();

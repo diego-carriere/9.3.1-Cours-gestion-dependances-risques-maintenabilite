@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Meteo.Api.Contracts;
+using Meteo.Api.Endpoints;
 using Meteo.Application.Forecasting;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -175,6 +176,7 @@ public sealed class ForecastEndpointTests : ApiTestBase
         {
             using var scope = factory.Services.CreateScope();
             _ = scope.ServiceProvider.GetRequiredService<IGetForecastUseCase>();
+            _ = scope.ServiceProvider.GetRequiredKeyedService<IGetForecastUseCase>(ForecastEndpoint.DemoServiceKey);
         });
 
         Assert.Null(exception);
