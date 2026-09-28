@@ -7,7 +7,7 @@ on:
 
 defaults:
   run:
-    working-directory: TP1-meteo
+    working-directory: TP-meteo
 
 jobs:
   build-test:
@@ -17,7 +17,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          global-json-file: TP1-meteo/global.json
+          global-json-file: TP-meteo/global.json
 
       - run: dotnet restore
 
@@ -34,7 +34,7 @@ jobs:
         if: always()
         with:
           name: test-results
-          path: TP1-meteo/TestResults
+          path: TP-meteo/TestResults
 
   docker:
     needs: build-test
@@ -42,4 +42,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: docker build -t meteo-api:ci TP1-meteo
+      - run: docker build -t meteo-api:ci TP-meteo
