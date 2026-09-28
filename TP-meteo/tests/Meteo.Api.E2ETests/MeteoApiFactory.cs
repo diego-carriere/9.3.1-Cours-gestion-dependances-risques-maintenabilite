@@ -16,32 +16,56 @@ namespace Meteo.Api.E2ETests;
 /// </summary>
 public sealed class MeteoApiFactory : WebApplicationFactory<Program>
 {
+    private readonly IReadOnlyDictionary<string, string?> _initialConfiguration;
+
+    public MeteoApiFactory(IReadOnlyDictionary<string, string?>? initialConfiguration = null)
+    {
+        _initialConfiguration = initialConfiguration ?? new Dictionary<string, string?>();
+    }
+
     public FakeUpstream Upstream { get; } = new();
+
+    /// <summary>
+    /// Modifiable après le démarrage de l'hôte (voir <see cref="ReloadableMemoryConfigurationSource"/>) :
+    /// un test peut y changer <c>Providers:Geocoder</c>/<c>Providers:Weather</c> entre deux
+    /// requêtes sans recréer la factory, la preuve exécutable de "sans redéploiement" (TP2).
+    /// </summary>
+    public ReloadableMemoryConfigurationSource ReloadableConfiguration { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
 
-        builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
-        [
-            new KeyValuePair<string, string?>("Nominatim:UserAgent", "TP1-Meteo-E2ETests/1.0 (test)"),
+        builder.ConfigureAppConfiguration((_, configuration) =>
+        {
+            configuration.AddInMemoryCollection(
+            [
+                new KeyValuePair<string, string?>("Nominatim:UserAgent", "TP1-Meteo-E2ETests/1.0 (test)"),
 
-            // MET Norway est validé au démarrage (ValidateOnStart) même quand il n'est pas
-            // le fournisseur météo actif : les deux fournisseurs restent utilisables sans
-            // redémarrage (TP2), donc les deux doivent déjà être correctement configurés.
-            new KeyValuePair<string, string?>("MetNo:UserAgent", "TP2-Meteo-E2ETests/1.0 (test)"),
+                // MET Norway est validé au démarrage (ValidateOnStart) même quand il n'est
+                // pas le fournisseur météo actif : les deux fournisseurs restent utilisables
+                // sans redémarrage (TP2), donc les deux doivent déjà être correctement configurés.
+                new KeyValuePair<string, string?>("MetNo:UserAgent", "TP2-Meteo-E2ETests/1.0 (test)"),
 
-            // Délais Polly raccourcis au minimum : la suite e2e doit rester rapide et
-            // déterministe, jamais soumise aux vrais délais de retry/breaker.
-            new KeyValuePair<string, string?>("Resilience:Nominatim:RetryBaseDelay", "00:00:00.001"),
-            new KeyValuePair<string, string?>("Resilience:Nominatim:CircuitBreakerBreakDuration", "00:00:00.500"),
-            new KeyValuePair<string, string?>("Resilience:Ban:RetryBaseDelay", "00:00:00.001"),
-            new KeyValuePair<string, string?>("Resilience:Ban:CircuitBreakerBreakDuration", "00:00:00.500"),
-            new KeyValuePair<string, string?>("Resilience:OpenMeteo:RetryBaseDelay", "00:00:00.001"),
-            new KeyValuePair<string, string?>("Resilience:OpenMeteo:CircuitBreakerBreakDuration", "00:00:00.500"),
-            new KeyValuePair<string, string?>("Resilience:MetNo:RetryBaseDelay", "00:00:00.001"),
-            new KeyValuePair<string, string?>("Resilience:MetNo:CircuitBreakerBreakDuration", "00:00:00.500"),
-        ]));
+                // Délais Polly raccourcis au minimum : la suite e2e doit rester rapide et
+                // déterministe, jamais soumise aux vrais délais de retry/breaker.
+                new KeyValuePair<string, string?>("Resilience:Nominatim:RetryBaseDelay", "00:00:00.001"),
+                new KeyValuePair<string, string?>("Resilience:Nominatim:CircuitBreakerBreakDuration", "00:00:00.500"),
+                new KeyValuePair<string, string?>("Resilience:Ban:RetryBaseDelay", "00:00:00.001"),
+                new KeyValuePair<string, string?>("Resilience:Ban:CircuitBreakerBreakDuration", "00:00:00.500"),
+                new KeyValuePair<string, string?>("Resilience:OpenMeteo:RetryBaseDelay", "00:00:00.001"),
+                new KeyValuePair<string, string?>("Resilience:OpenMeteo:CircuitBreakerBreakDuration", "00:00:00.500"),
+                new KeyValuePair<string, string?>("Resilience:MetNo:RetryBaseDelay", "00:00:00.001"),
+                new KeyValuePair<string, string?>("Resilience:MetNo:CircuitBreakerBreakDuration", "00:00:00.500"),
+            ]);
+
+            // Surcharges fournies à la construction (ex. Providers:Geocoder=ban dès le
+            // démarrage), puis la source rechargeable — ajoutée en dernier pour l'emporter
+            // dès qu'un test y écrit, tout en s'effaçant devant les valeurs ci-dessus tant
+            // qu'elle est vide.
+            configuration.AddInMemoryCollection(_initialConfiguration);
+            configuration.Add(ReloadableConfiguration);
+        });
 
         builder.ConfigureTestServices(services =>
         {

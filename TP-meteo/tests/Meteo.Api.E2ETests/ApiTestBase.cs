@@ -8,8 +8,14 @@ namespace Meteo.Api.E2ETests;
 public abstract class ApiTestBase : IDisposable
 {
     protected ApiTestBase()
+        : this(initialConfiguration: null)
     {
-        Factory = new MeteoApiFactory();
+    }
+
+    /// <summary>Pour un test qui a besoin de démarrer l'hôte avec un fournisseur non-TP1 déjà actif.</summary>
+    protected ApiTestBase(IReadOnlyDictionary<string, string?>? initialConfiguration)
+    {
+        Factory = new MeteoApiFactory(initialConfiguration);
         Client = Factory.CreateClient();
     }
 

@@ -21,8 +21,9 @@ public static class InfrastructureServiceCollectionExtensions
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        // BindOnce plutôt que Bind pour toute option validée au démarrage : voir BindOnce.
         services.AddOptions<NominatimOptions>()
-            .Bind(configuration.GetSection(NominatimOptions.SectionName))
+            .BindOnce(configuration.GetSection(NominatimOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart(); // L'app refuse de démarrer sans User-Agent Nominatim valide.
 
@@ -33,7 +34,7 @@ public static class InfrastructureServiceCollectionExtensions
             .Bind(configuration.GetSection(OpenMeteoOptions.SectionName));
 
         services.AddOptions<MetNoOptions>()
-            .Bind(configuration.GetSection(MetNoOptions.SectionName))
+            .BindOnce(configuration.GetSection(MetNoOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart(); // L'app refuse de démarrer sans User-Agent MET Norway valide.
 
@@ -42,9 +43,10 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Providers:Geocoder / Providers:Weather choisissent le fournisseur actif par port
         // (TP2, "changer de fournisseur sans redéploiement") : voir GeocoderSelector et
-        // WeatherProviderSelector, qui la relisent à chaque appel via IOptionsMonitor.
+        // WeatherProviderSelector, qui relisent IConfiguration à chaque appel. Ce type-ci ne
+        // sert qu'à la validation au démarrage.
         services.AddOptions<ProvidersOptions>()
-            .Bind(configuration.GetSection(ProvidersOptions.SectionName))
+            .BindOnce(configuration.GetSection(ProvidersOptions.SectionName))
             .ValidateOnStart(); // Une clé de fournisseur inconnue empêche l'app de démarrer.
         services.AddSingleton<IValidateOptions<ProvidersOptions>, ProvidersOptionsValidator>();
 
@@ -125,4 +127,18 @@ public static class InfrastructureServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Lie la section une fois, à la création des options, sans s'abonner à ses
+    /// rechargements. <c>OptionsBuilder.Bind</c> enregistre une source de jeton de
+    /// changement ; combinée à <c>ValidateOnStart</c> (qui résout un
+    /// <c>IOptionsMonitor&lt;T&gt;</c>), elle fait revalider l'option à chaque rechargement
+    /// de configuration, et une valeur invalide lève alors depuis le callback de
+    /// rechargement, hors de toute requête. Aucun consommateur de ces options ne lit
+    /// <c>CurrentValue</c> : la validation au démarrage suffit, la bascule à chaud passe
+    /// par <see cref="GeocoderSelector"/> et <see cref="WeatherProviderSelector"/>.
+    /// </summary>
+    private static OptionsBuilder<TOptions> BindOnce<TOptions>(this OptionsBuilder<TOptions> builder, IConfiguration section)
+        where TOptions : class =>
+        builder.Configure(options => section.Bind(options));
 }

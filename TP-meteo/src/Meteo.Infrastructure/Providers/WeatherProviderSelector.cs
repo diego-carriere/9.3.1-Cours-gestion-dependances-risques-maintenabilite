@@ -1,28 +1,28 @@
 using Meteo.Domain.Abstractions;
 using Meteo.Domain.Model;
 using Meteo.Domain.Results;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Meteo.Infrastructure.Providers;
 
 /// <summary>
 /// Le seul <see cref="IWeatherProvider"/> exposé au conteneur. Même rôle que
-/// <see cref="GeocoderSelector"/>, côté météo : voir sa note pour le raisonnement complet
-/// (IOptionsMonitor relu à chaque appel, IServiceProvider de portée, sans état propre).
+/// <see cref="GeocoderSelector"/>, côté météo : voir sa note pour le raisonnement complet,
+/// notamment pourquoi la lecture se fait sur <see cref="IConfiguration"/> brute plutôt que
+/// sur un <c>IOptionsMonitor&lt;ProvidersOptions&gt;</c>.
 /// </summary>
 internal sealed partial class WeatherProviderSelector : IWeatherProvider
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly IOptionsMonitor<ProvidersOptions> _options;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<WeatherProviderSelector> _logger;
 
-    public WeatherProviderSelector(
-        IServiceProvider serviceProvider, IOptionsMonitor<ProvidersOptions> options, ILogger<WeatherProviderSelector> logger)
+    public WeatherProviderSelector(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<WeatherProviderSelector> logger)
     {
         _serviceProvider = serviceProvider;
-        _options = options;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -34,11 +34,11 @@ internal sealed partial class WeatherProviderSelector : IWeatherProvider
 
     private string ResolveKey()
     {
-        var requested = _options.CurrentValue.Weather;
+        var requested = _configuration[$"{ProvidersOptions.SectionName}:Weather"] ?? ProviderKeys.OpenMeteo;
 
-        if (ProviderKeys.WeatherProviders.Contains(requested))
+        if (ProviderKeys.WeatherProviders.TryGetValue(requested, out var canonical))
         {
-            return requested;
+            return canonical;
         }
 
         LogUnknownProviderKey("Weather", requested, ProviderKeys.OpenMeteo);
