@@ -7,11 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a training-course repository for "Gestion des dépendances, risques et maintenabilité" — a 3-day course (Jour 1: comprendre et maîtriser ses dépendances; Jour 2: découpler, packager et sécuriser ses choix; Jour 3: appliquer et évaluer). It is a git repository; CI lives in `.github/workflows/ci.yml`.
 
 - `Support J1.md` / `Support J1.pdf` — Day 1 slide deck (source of truth is the PDF; the `.md` is a text extraction and may render diagrams as garbled inline text — treat picture/diagram callouts in the `.md` as lossy).
-- `TP-meteo/` — the practical exercises TP1–TP3 and their shared implementation: briefs in `TP-meteo/documentation/` (`TP1`–`TP3`, `.md`/`.pdf`), `prompt.md` (the user's own working prompt and rules for these TPs), and a .NET 10 solution (`Meteo.slnx`, `src/`, `tests/`). `TP-meteo/README.md` justifies every architectural choice against the Day 1 deck — keep it in sync with the code.
+- `Support J2.pdf` — Day 2 slide deck (decoupling, packaging, licences; parts 8–9 "Packages et licences" / "Auditer les licences" back TP4).
+- `TP-meteo/` — the practical exercises TP1–TP4 and their shared implementation: briefs in `TP-meteo/documentation/` (`TP1`–`TP4`, `.md`/`.pdf`), `prompt.md` (the user's own working prompt and rules for these TPs), and a .NET 10 solution (`Meteo.slnx`, `src/`, `tests/`). `TP-meteo/README.md` justifies every architectural choice against the Day 1 deck — keep it in sync with the code.
 
 Commands (run from `TP-meteo/`): `dotnet build` (TreatWarningsAsErrors), `dotnet test` (offline, HTTP transport faked), `dotnet run --project src/Meteo.Api`.
 
-Commit convention (from `prompt.md`): every commit message is prefixed `[TP1]`, `[TP2]` or `[TP3]` according to the TP it serves, e.g. `[TP2] fix(infra): ...`.
+Commit convention (from `prompt.md`): every commit message is prefixed `[TP1]`, `[TP2]`, `[TP3]` or `[TP4]` according to the TP it serves, e.g. `[TP2] fix(infra): ...`.
 
 ## TP1 — API Météo assignment
 
@@ -33,6 +34,10 @@ Per `TP-meteo/prompt.md`, architectural choices were settled before the plan and
 ## TP3 — mode démo, cache et format
 
 `TP-meteo/documentation/TP3.md` consolidates TP1/TP2, again measured by the cost of change (add code behind existing abstractions, barely modify existing code): `demo=true` returns simulated data and never calls the real geocoder or weather service; two successive requests for the same address make a single real call to the active geocoder (no `static`, the cache implementation must stay swappable); every provider and demo mode return exactly `{ address, latitude, longitude, hourly: [{ time, temperatureCelsius }] }` — switching provider or enabling demo changes the content, never the shape.
+
+## TP4 — audit de conformité des licences
+
+`TP-meteo/documentation/TP4.md` audits the existing project and adds no dependency: scan every NuGet dependency, direct and transitive, with `dotnet-project-licenses` and export the result (`licenses.json`); classify every licence as permissive, copyleft or proprietary, explicitly flagging any copyleft (GPL, AGPL, LGPL) or unidentified one; write a decision record for each copyleft case — or, when the project has none, for another case — giving the package, its position in the dependency tree (direct/transitive, depth), the chosen strategy (rewrite, substitute a permissive equivalent, isolate behind an existing interface, negotiate another licence) and its justification against the existing boundaries/adapters; make CI fail when a licence outside a whitelist appears. Success criterion: deliberately adding a GPL test package turns the build red, removing it turns it green again. Deliverable: a report holding the raw scan, the classification table, the decision record(s) and the CI configuration.
 
 ## Course concepts to keep consistent with
 
