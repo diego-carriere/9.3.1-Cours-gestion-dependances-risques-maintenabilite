@@ -1,13 +1,15 @@
-# TP1 & TP2 — API Météo
+# TP1, TP2 & TP3 — API Météo
 
 `GET /forecast?address=<adresse>` renvoie les prévisions du lieu, en enchaînant deux
 services externes : un **géocodeur** (adresse → lat/lon) puis un **fournisseur météo**
 (lat/lon → prévisions).
 
-- **TP1** (`TP1.md`) : Nominatim + Open-Meteo, avec couplage faible, IoC et DI.
-- **TP2** (`TP2.md`) : ajout de la BAN et de MET Norway derrière les mêmes ports, choix du
+- **TP1** (`documentation/TP1.md`) : Nominatim + Open-Meteo, avec couplage faible, IoC et DI.
+- **TP2** (`documentation/TP2.md`) : ajout de la BAN et de MET Norway derrière les mêmes ports, choix du
   fournisseur par configuration, sans recompilation ni redémarrage — voir
   [TP2 — changement d'API](#tp2--changement-dapi).
+- **TP3** (`documentation/TP3.md`) : mode démo, cache de géocodage prouvé, format de sortie unifié — voir
+  [TP3](#tp3--mode-démo-cache-et-format-unifié).
 
 Ce README est la pièce à charge des deux TP : il justifie chaque choix architectural face
 au support du Jour 1 (`../Support J1.md`), et doit permettre de défendre le projet sans
