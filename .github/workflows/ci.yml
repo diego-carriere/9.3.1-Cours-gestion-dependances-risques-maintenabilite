@@ -36,8 +36,29 @@ jobs:
           name: test-results
           path: TP-meteo/TestResults
 
+  license-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: TP-meteo/global.json
+
+      # TP4 : échoue si une dépendance NuGet, directe ou transitive, porte une licence
+      # absente de licenses/allowed-licenses.json ou non identifiée par l'outil.
+      - run: ./licenses/audit.sh
+
+      # Le scan brut versionné est celui du code actuel : un paquet ajouté ou mis à jour
+      # sans relancer ./licenses/audit.sh fait échouer la CI.
+      - run: git diff --exit-code -- licenses/licenses.json
+
+      # Contrôle négatif permanent : le même gate, sur un projet jetable qui référence un
+      # paquet GPL-3.0, doit refuser. S'il accepte, le gate ne protège plus rien.
+      - run: ./licenses/audit-canary.sh
+
   docker:
-    needs: build-test
+    needs: [build-test, license-audit]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

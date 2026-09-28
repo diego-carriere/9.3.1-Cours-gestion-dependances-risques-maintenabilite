@@ -10,7 +10,7 @@ This is a training-course repository for "Gestion des dépendances, risques et m
 - `Support J2.pdf` — Day 2 slide deck (decoupling, packaging, licences; parts 8–9 "Packages et licences" / "Auditer les licences" back TP4).
 - `TP-meteo/` — the practical exercises TP1–TP4 and their shared implementation: briefs in `TP-meteo/documentation/` (`TP1`–`TP4`, `.md`/`.pdf`), `prompt.md` (the user's own working prompt and rules for these TPs), and a .NET 10 solution (`Meteo.slnx`, `src/`, `tests/`). `TP-meteo/README.md` justifies every architectural choice against the Day 1 deck — keep it in sync with the code.
 
-Commands (run from `TP-meteo/`): `dotnet build` (TreatWarningsAsErrors), `dotnet test` (offline, HTTP transport faked), `dotnet run --project src/Meteo.Api`.
+Commands (run from `TP-meteo/`): `dotnet build` (TreatWarningsAsErrors), `dotnet test` (offline, HTTP transport faked), `dotnet run --project src/Meteo.Api`, `./licenses/audit.sh` (licence gate, exactly as CI runs it; needs network) and `./licenses/audit-canary.sh` (proves the gate still rejects a GPL package).
 
 Commit convention (from `prompt.md`): every commit message is prefixed `[TP1]`, `[TP2]`, `[TP3]` or `[TP4]` according to the TP it serves, e.g. `[TP2] fix(infra): ...`.
 
