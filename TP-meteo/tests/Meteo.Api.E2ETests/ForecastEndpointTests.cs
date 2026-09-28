@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Meteo.Api.Contracts;
 using Meteo.Application.Forecasting;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,9 +54,44 @@ public sealed class ForecastEndpointTests : ApiTestBase
 
         var payload = await response.Content.ReadFromJsonAsync<ForecastResponse>();
         Assert.NotNull(payload);
-        Assert.Equal("Alès", payload.RequestedAddress);
-        Assert.False(payload.Degraded);
+        Assert.Equal("Alès", payload.Address);
+        Assert.Equal("live", response.Headers.GetValues("X-Data-Source").Single());
         Assert.Equal(2, payload.Hourly.Count);
+    }
+
+    [Fact]
+    public async Task Forecast_body_has_exactly_the_unified_shape_with_Z_suffixed_times()
+    {
+        Factory.Upstream.EnqueueFor(NominatimHost, Json(NominatimMatch));
+        Factory.Upstream.EnqueueFor(OpenMeteoHost, Json(OpenMeteoForecast));
+
+        var response = await Client.GetAsync(new Uri("/forecast?address=Alès", UriKind.Relative));
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(JsonShape.Unified, JsonShape.Of(body));
+        using var document = JsonDocument.Parse(body);
+        var hourly = document.RootElement.GetProperty("hourly");
+        Assert.Equal("2026-09-18T00:00:00Z", hourly[0].GetProperty("time").GetString());
+        Assert.Equal(12.5, hourly[1].GetProperty("temperatureCelsius").GetDouble());
+    }
+
+    [Fact]
+    public async Task Forecast_carries_the_date_of_its_data_in_Last_Modified()
+    {
+        Factory.Upstream.EnqueueFor(NominatimHost, Json(NominatimMatch));
+        Factory.Upstream.EnqueueFor(OpenMeteoHost, Json(OpenMeteoForecast));
+
+        var response = await Client.GetAsync(new Uri("/forecast?address=Alès", UriKind.Relative));
+
+        Assert.NotNull(response.Content.Headers.LastModified);
+    }
+
+    [Fact]
+    public void A_non_temperature_Open_Meteo_variable_prevents_the_host_from_starting()
+    {
+        using var factory = new MeteoApiFactory(new Dictionary<string, string?> { ["OpenMeteo:HourlyVariable"] = "shortwave_radiation" });
+
+        Assert.NotNull(Record.Exception(() => factory.CreateClient()));
     }
 
     [Fact]

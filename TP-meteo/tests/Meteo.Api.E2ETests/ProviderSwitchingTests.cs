@@ -92,13 +92,11 @@ public sealed class ProviderSwitchingTests
             Assert.DoesNotContain($"\"{leakingField}\"", body, StringComparison.Ordinal);
         }
 
+        Assert.Equal(JsonShape.Unified, JsonShape.Of(body));
         var payload = await response.Content.ReadFromJsonAsync<ForecastResponse>();
         Assert.NotNull(payload);
-        Assert.Equal("Alès", payload.RequestedAddress);
-        Assert.NotEmpty(payload.ResolvedPlace);
+        Assert.Equal("Alès", payload.Address);
         Assert.NotEmpty(payload.Hourly);
-        Assert.Equal("air_temperature", payload.Variable);
-        Assert.Equal("°C", payload.Unit);
     }
 
     [Fact]

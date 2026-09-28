@@ -7,9 +7,8 @@ namespace Meteo.Infrastructure.Weather;
 /// désérialisation restait câblée sur <c>shortwave_radiation</c> quelle que soit la valeur
 /// configurée ici. Le nom canonique exposé au Domaine suit la variable choisie, via
 /// <see cref="OpenMeteoVariables"/> ; une variable qui n'y figure pas empêche le démarrage
-/// (<see cref="OpenMeteoOptionsValidator"/>). Seule <c>temperature_2m</c> est aussi fournie
-/// par MET Norway : c'est la valeur à garder pour que la bascule de fournisseur ne change
-/// pas le sens de la réponse.
+/// (<see cref="OpenMeteoOptionsValidator"/>). Depuis le TP3, seule <c>temperature_2m</c> est
+/// acceptée : le contrat public nomme son champ <c>temperatureCelsius</c>.
 /// </summary>
 public sealed class OpenMeteoOptions
 {

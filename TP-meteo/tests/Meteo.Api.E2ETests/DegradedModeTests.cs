@@ -1,7 +1,5 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text;
-using Meteo.Api.Contracts;
 
 namespace Meteo.Api.E2ETests;
 
@@ -49,10 +47,6 @@ public sealed class DegradedModeTests : ApiTestBase
 
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
         Assert.Equal("cache-stale", second.Headers.GetValues("X-Data-Source").Single());
-
-        var payload = await second.Content.ReadFromJsonAsync<ForecastResponse>();
-        Assert.NotNull(payload);
-        Assert.True(payload.Degraded);
 
         // Le géocodage, lui, n'a jamais été réappelé : la fraîcheur (24h) a tenu.
         Assert.Equal(1, Factory.Upstream.CallCountFor(NominatimHost));

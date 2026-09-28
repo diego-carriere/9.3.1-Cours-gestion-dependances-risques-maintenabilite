@@ -1,3 +1,4 @@
+using System.Globalization;
 using Meteo.Api.Contracts;
 using Meteo.Api.Errors;
 using Meteo.Api.Http;
@@ -31,25 +32,16 @@ internal static class ForecastEndpoint
         }
 
         var forecastResult = result.Value;
-        var response = ToResponse(forecastResult);
-        var ok = Results.Ok(response);
 
-        // Simplification assumée : on ne distingue que dégradé/non dégradé, pas les trois
-        // états (live/cache-fresh/cache-stale) — ForecastResult ne porte pas cette nuance
-        // et aucun scénario testé n'en a besoin (voir README).
+        // Le corps ne porte que les quatre champs du contrat (TP3). L'origine et la date des
+        // données voyagent en en-têtes. Simplification assumée : on ne distingue que dégradé
+        // et non dégradé, pas les trois états live/cache-fresh/cache-stale — ForecastResult
+        // ne porte pas cette nuance (voir README).
+        var ok = Results.Ok(ForecastResponseMapper.ToResponse(forecastResult))
+            .WithHeader("Last-Modified", forecastResult.DataAsOfUtc.ToString("R", CultureInfo.InvariantCulture));
+
         return forecastResult.IsDegraded
             ? ok.WithHeader("X-Data-Source", "cache-stale").WithHeader("Warning", "110 - \"Response is stale\"")
             : ok.WithHeader("X-Data-Source", "live");
     }
-
-    private static ForecastResponse ToResponse(ForecastResult result) => new(
-        RequestedAddress: result.RequestedAddress.Value,
-        ResolvedPlace: result.Forecast.Location.DisplayName,
-        Latitude: result.Forecast.Location.Latitude,
-        Longitude: result.Forecast.Location.Longitude,
-        Variable: result.Forecast.Variable,
-        Unit: result.Forecast.Unit,
-        Hourly: [.. result.Forecast.Points.Select(p => new ForecastPointResponse(p.TimestampUtc, p.Value))],
-        Degraded: result.IsDegraded,
-        DataAsOf: result.DataAsOfUtc);
 }
