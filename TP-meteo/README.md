@@ -19,7 +19,7 @@ relire le code. Les commits sont préfixés `[TP1]`, `[TP2]` ou `[TP3]` selon le
 
 ```bash
 dotnet build                     # 0 avertissement : TreatWarningsAsErrors=true
-dotnet test                      # 140 tests, hors-ligne, déterministes
+dotnet test                      # 141 tests, hors-ligne, déterministes
 
 # User-Agent identifiable fourni par appsettings.json (Nominatim et MET Norway renvoient
 # 403 sans lui). L'app refuse de démarrer si l'un d'eux est vide ; surchargeable :
@@ -374,7 +374,7 @@ qu'une fois. Le TP3 n'ajoute que des preuves :
 - `GeocodingCacheTests` : pour Nominatim **et** la BAN, deux requêtes donnent un appel. Et
   « Alès » puis « ␣␣ALÈS␣␣ » donnent aussi un seul appel (`Address.CacheKey`).
 - **Pas de static** : `StaticStateInspector` refuse tout champ statique mutable dans Domain,
-  Application et Infrastructure. `CacheContractTests.Two_instances_never_share_entries`
+  Application, Infrastructure et Api. `CacheContractTests.Two_instances_never_share_entries`
   complète la preuve.
 - **Le cache peut évoluer** : `CacheContractTests` est héritée par `MemoryCache<T>` et par le
   fake `InMemoryCache<T>`. Passer à un cache distribué demande une classe `ICache<T>`, qui
@@ -388,9 +388,9 @@ qu'une fois. Le TP3 n'ajoute que des preuves :
 | `Meteo.Domain.Tests` | unitaire + architecture (dont « pas de static ») | 13 |
 | `Meteo.Application.Tests` | unitaire (fakes), contrat du fake de cache | 18 |
 | `Meteo.Infrastructure.Tests` | unitaire HTTP (sans réseau), contrats par port et de cache, sélection de fournisseur, isolation des DTO, résilience, adaptateurs démo, « pas de static » | 69 |
-| `Meteo.Api.E2ETests` | e2e en mémoire (transport simulé), dont bascule de fournisseur à chaud, mode démo, forme unifiée, cache de géocodage | 40 |
+| `Meteo.Api.E2ETests` | e2e en mémoire (transport simulé), dont bascule de fournisseur à chaud, mode démo, forme unifiée, cache de géocodage, « pas de static » | 41 |
 
-**140 tests, aucun appel réseau, aucun ne dépasse quelques centaines de millisecondes.**
+**141 tests, aucun appel réseau, aucun ne dépasse quelques centaines de millisecondes.**
 
 Le point le plus démonstratif : remplacer les APIs externes en test ne demande de changer
 **aucune** ligne de code de production — seul le `HttpMessageHandler` primaire est
