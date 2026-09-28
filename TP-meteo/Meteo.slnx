@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Meteo.Api/Meteo.Api.csproj" />
+    <Project Path="src/Meteo.Application/Meteo.Application.csproj" />
+    <Project Path="src/Meteo.Domain/Meteo.Domain.csproj" />
+    <Project Path="src/Meteo.Infrastructure/Meteo.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Meteo.Api.E2ETests/Meteo.Api.E2ETests.csproj" />
+    <Project Path="tests/Meteo.Application.Tests/Meteo.Application.Tests.csproj" />
+    <Project Path="tests/Meteo.Domain.Tests/Meteo.Domain.Tests.csproj" />
+    <Project Path="tests/Meteo.Infrastructure.Tests/Meteo.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Meteo.TestSupport/Meteo.TestSupport.csproj" />
+  </Folder>
+</Solution>

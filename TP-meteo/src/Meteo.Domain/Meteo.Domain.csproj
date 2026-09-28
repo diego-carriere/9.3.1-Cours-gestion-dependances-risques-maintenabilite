@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Aucune référence de projet, aucun paquet NuGet : c'est le point du TP.
+       `dotnet list package` sur ce projet n'affiche rien. -->
+</Project>

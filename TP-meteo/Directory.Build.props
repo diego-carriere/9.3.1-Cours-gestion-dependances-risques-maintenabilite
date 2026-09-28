@@ -1,0 +1,45 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+
+    <!-- Un avertissement ignoré est une dette acceptée : voir Support J1, "A retenir". -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+
+    <!-- Requis par Roslyn pour qu'IDE0005 (using inutilisé) soit évalué au build,
+         pas seulement dans l'IDE : https://github.com/dotnet/roslyn/issues/41640 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Un using inutilisé est une dépendance fantôme. -->
+    <WarningsAsErrors>IDE0005</WarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(MSBuildProjectName.Contains('Test'))">
+    <!-- CA1707 (pas d'underscores dans les noms) vise l'API publique ; les noms de tests
+         xUnit en Given_When_Then sont délibérément plus lisibles ainsi. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+  <!-- Les adaptateurs d'Infrastructure sont internal : ce n'est visible qu'aux tests
+       d'Infrastructure. Le composition root (Meteo.Api) ne peut alors physiquement pas
+       instancier un adaptateur lui-même — cf. Support J1, "Le problème du new partout". -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Meteo.Infrastructure'">
+    <InternalsVisibleTo Include="Meteo.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <!-- Même raisonnement pour Meteo.Api : ForecastEndpoint/ForecastErrorMapper sont
+       internal ; seule la suite e2e qui l'héberge en mémoire peut les nommer directement
+       (ex. le test d'exhaustivité de ForecastErrorMapper). -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Meteo.Api'">
+    <InternalsVisibleTo Include="Meteo.Api.E2ETests" />
+  </ItemGroup>
+
+</Project>
