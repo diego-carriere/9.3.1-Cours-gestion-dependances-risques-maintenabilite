@@ -7,13 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a training-course repository for "Gestion des dépendances, risques et maintenabilité" — a 3-day course (Jour 1: comprendre et maîtriser ses dépendances; Jour 2: découpler, packager et sécuriser ses choix; Jour 3: appliquer et évaluer). It is a git repository; CI lives in `.github/workflows/ci.yml`.
 
 - `documentation/` — the course slide decks: `Support J1.md` / `.pdf` (Day 1) and `Support J2.md` / `.pdf` (Day 2: decoupling, packaging, licences; parts 8–9 "Packages et licences" / "Auditer les licences" back TP4).
-- `TP-meteo/` — the practical exercises TP1–TP4 and their shared implementation: briefs in `TP-meteo/documentation/` (`TP1`–`TP4`, `.md`/`.pdf`), `prompt.md` (the user's own working prompt and rules for these TPs), and a .NET 10 solution (`Meteo.slnx`, `src/`, `tests/`). `TP-meteo/README.md` justifies every architectural choice against the Day 1 deck — keep it in sync with the code.
+- `TP-meteo/` — the first practical exercise, TP1–TP4, and their shared implementation: briefs in `TP-meteo/documentation/` (`TP1`–`TP4`, `.md`/`.pdf`), `prompt.md` (the user's own working prompt and rules for these TPs), and a .NET 10 solution (`Meteo.slnx`, `src/`, `tests/`). `TP-meteo/README.md` justifies every architectural choice against the Day 1 deck — keep it in sync with the code.
+- `TP-musical/` — the second practical exercise, "Réveil musical": brief in `TP-musical/documentation/TP_reveil_musical.md` (`.md`/`.pdf`). No code yet.
 
 **Reading documentation: always open the `.md`, not the `.pdf`.** Every deck and brief exists in both formats; the Markdown costs far fewer tokens. The `.md` files are text extractions: diagrams appear as garbled `<!-- Start of picture text -->` callouts. Open the matching PDF page only when such a diagram actually matters to the task and its text is unreadable.
 
 Commands (run from `TP-meteo/`): `dotnet build` (TreatWarningsAsErrors), `dotnet test` (offline, HTTP transport faked), `dotnet run --project src/Meteo.Api`, `./licenses/audit.sh` (licence gate, exactly as CI runs it; needs network) and `./licenses/audit-canary.sh` (proves the gate still rejects a GPL package).
 
-Commit convention (from `TP-meteo/prompt.md`): every TP-meteo commit message is prefixed `[TP1]`, `[TP2]`, `[TP3]` or `[TP4]` according to the TP it serves, e.g. `[TP2] fix(infra): ...`. Commits serving the whole course (decks, CLAUDE.md) are prefixed `[COURS]`.
+Commit convention (from `TP-meteo/prompt.md`): every TP-meteo commit message is prefixed `[TP1]`, `[TP2]`, `[TP3]` or `[TP4]` according to the TP it serves, e.g. `[TP2] fix(infra): ...`. TP-musical commits are prefixed `[TP-musical]`; commits serving the whole course (decks, CLAUDE.md) are prefixed `[COURS]`.
 
 ## TP1 — API Météo assignment
 
@@ -39,6 +40,19 @@ Per `TP-meteo/prompt.md`, architectural choices were settled before the plan and
 ## TP4 — audit de conformité des licences
 
 `TP-meteo/documentation/TP4.md` audits the existing project and adds no dependency: scan every NuGet dependency, direct and transitive, with `dotnet-project-licenses` and export the result (`licenses.json`); classify every licence as permissive, copyleft or proprietary, explicitly flagging any copyleft (GPL, AGPL, LGPL) or unidentified one; write a decision record for each copyleft case — or, when the project has none, for another case — giving the package, its position in the dependency tree (direct/transitive, depth), the chosen strategy (rewrite, substitute a permissive equivalent, isolate behind an existing interface, negotiate another licence) and its justification against the existing boundaries/adapters; make CI fail when a licence outside a whitelist appears. Success criterion: deliberately adding a GPL test package turns the build red, removing it turns it green again. Deliverable: a report holding the raw scan, the classification table, the decision record(s) and the CI configuration.
+
+## TP-musical — Réveil musical
+
+`TP-musical/documentation/TP_reveil_musical.md` is a new project, separate from TP-meteo. It is evaluated on how four non-negotiable business needs translate into code:
+
+- **Music provider swappable quickly.** Two real sources: iTunes Search (`itunes.apple.com/search?term=<morceau>&media=music&limit=5`, no key, ~20 req/min to respect via a cache; `trackViewUrl` must not leak into the domain) and MusicBrainz (`musicbrainz.org/ws/2/recording?query=<morceau>&fmt=json`, rejects requests without an identifiable User-Agent: app name + contact). Plus a hard-coded local fallback list.
+- **Notification channel per user.** Email, SMS and push, simulated by hand-written mocks (console or log file, no real sending). Each mock deliberately has a different interface, and adapters bring them back to one common interface. WhatsApp and voice call are expected later.
+- **Legal.** No external component without first checking its licence and freshness.
+- **Reliability.** A music-provider or channel outage must never prevent the wake-up: degraded mode is acceptable, silence is not.
+
+Entry point: the call that triggers the send (scheduling is not coded). It receives the user ID, the day of the week and today's weather type (`SOLEIL` / `PLUIE` / `NEIGE` / `NUAGEUX`, given as input, no weather API call). An internal service, to be mocked behind an interface, returns from the ID the user's track for each weather type, a fallback track and the preferred channel.
+
+Explicit architecture requirements: no domain class knows a technical detail of a specific provider or channel, and no concrete implementation is instantiated with `new` (IoC/DI). Deliverables: a Git repository with the full source; a `README.md` listing every package/SDK with its licence, installed version and freshness (latest stable), with a justification for any questionable component (copyleft, old version...); unit tests with good coverage.
 
 ## Course concepts to keep consistent with
 
