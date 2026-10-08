@@ -1,4 +1,4 @@
-# TP1, TP2 & TP3 — API Météo
+# TP1 à TP4 — API Météo
 
 `GET /forecast?address=<adresse>` renvoie les prévisions du lieu, en enchaînant deux
 services externes : un **géocodeur** (adresse → lat/lon) puis un **fournisseur météo**
@@ -10,16 +10,20 @@ services externes : un **géocodeur** (adresse → lat/lon) puis un **fournisseu
   [TP2 — changement d'API](#tp2--changement-dapi).
 - **TP3** (`documentation/TP3.md`) : mode démo, cache de géocodage prouvé, format de sortie unifié — voir
   [TP3](#tp3--mode-démo-cache-et-format-unifié).
+- **TP4** (`documentation/TP4.md`) : audit des licences de toutes les dépendances, gate en CI — voir
+  [TP4](#tp4--audit-de-conformité-des-licences).
 
-Ce README est la pièce à charge des trois TP : il justifie chaque choix architectural face
-au support du Jour 1 (`../Support J1.md`), et doit permettre de défendre le projet sans
-relire le code. Les commits sont préfixés `[TP1]`, `[TP2]` ou `[TP3]` selon le TP qu'ils servent.
+Ce README est la pièce à charge des quatre TP : il justifie chaque choix architectural face
+au support du Jour 1 (`../Support J1.md`) et, pour le TP4, du Jour 2 (`../Support J2.pdf`).
+Il doit permettre de défendre le projet sans relire le code. Les commits sont préfixés
+`[TP1]`, `[TP2]`, `[TP3]` ou `[TP4]` selon le TP qu'ils servent.
 
 ## Lancer et tester
 
 ```bash
 dotnet build                     # 0 avertissement : TreatWarningsAsErrors=true
 dotnet test                      # 141 tests, hors-ligne, déterministes
+./licenses/audit.sh              # audit des licences (TP4), comme en CI ; réseau requis
 
 # User-Agent identifiable fourni par appsettings.json (Nominatim et MET Norway renvoient
 # 403 sans lui). L'app refuse de démarrer si l'un d'eux est vide ; surchargeable :
@@ -381,6 +385,24 @@ qu'une fois. Le TP3 n'ajoute que des preuves :
   hérite de la suite, et une ligne changée dans `AddInfrastructure`. Ni le cas d'usage ni ses
   tests ne bougent.
 
+## TP4 — audit de conformité des licences
+
+Rapport complet : [`licenses/RAPPORT.md`](licenses/RAPPORT.md). Aucune dépendance ajoutée : le
+TP audite l'existant.
+
+- **Scan exhaustif** : `./licenses/audit.sh` lance `dotnet-project-licenses` (épinglé dans
+  `dotnet-tools.json`) sur les 9 projets, transitifs compris, à partir du graphe résolu par
+  `dotnet restore`. Le résultat, `licenses/licenses.json` (62 paquets), est versionné.
+- **Classification** : 51 MIT, 8 Apache-2.0, 3 BSD-3-Clause, toutes permissives. Aucune
+  licence copyleft ni propriétaire. Une licence non identifiée par l'outil
+  (`xunit.abstractions`, qui ne déclare qu'une URL) a été relue à la main : Apache-2.0.
+- **Gate en CI** (job `license-audit`) : toute licence absente de
+  `licenses/allowed-licenses.json`, ou non identifiée, fait échouer le build. Un scan versionné
+  périmé aussi. Le job `docker` l'attend : aucune image n'est construite avec une licence non
+  revue.
+- **Contrôle négatif permanent** : `./licenses/audit-canary.sh` vérifie à chaque CI que le
+  gate refuse un paquet GPL-3.0, et qu'il le refuse pour sa licence plutôt que sur une panne.
+
 ## Tests
 
 | Projet | Nature | Compte |
@@ -427,3 +449,6 @@ réel. C'est la preuve, exécutable, que l'IoC/DI rend le code testable.
 - Le `Dockerfile` suit le patron multi-étapes standard .NET ; il est construit par le CI
   (`.github/workflows/ci.yml`), pas vérifié localement (Docker absent de l'environnement
   de développement).
+- L'audit de licences couvre les paquets NuGet, pas la couche système de l'image Docker (un
+  SBOM d'image serait l'étape suivante), ni le framework partagé ASP.NET Core.
+- Les scripts d'audit sont en bash : Linux, macOS et CI ; sous Windows, Git Bash ou WSL.
