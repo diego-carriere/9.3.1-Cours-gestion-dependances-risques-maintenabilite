@@ -6,13 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a training-course repository for "Gestion des dépendances, risques et maintenabilité" — a 3-day course (Jour 1: comprendre et maîtriser ses dépendances; Jour 2: découpler, packager et sécuriser ses choix; Jour 3: appliquer et évaluer). It is a git repository; CI lives in `.github/workflows/ci.yml`.
 
-- `Support J1.md` / `Support J1.pdf` — Day 1 slide deck (source of truth is the PDF; the `.md` is a text extraction and may render diagrams as garbled inline text — treat picture/diagram callouts in the `.md` as lossy).
-- `Support J2.pdf` — Day 2 slide deck (decoupling, packaging, licences; parts 8–9 "Packages et licences" / "Auditer les licences" back TP4).
+- `documentation/` — the course slide decks: `Support J1.md` / `.pdf` (Day 1) and `Support J2.md` / `.pdf` (Day 2: decoupling, packaging, licences; parts 8–9 "Packages et licences" / "Auditer les licences" back TP4).
 - `TP-meteo/` — the practical exercises TP1–TP4 and their shared implementation: briefs in `TP-meteo/documentation/` (`TP1`–`TP4`, `.md`/`.pdf`), `prompt.md` (the user's own working prompt and rules for these TPs), and a .NET 10 solution (`Meteo.slnx`, `src/`, `tests/`). `TP-meteo/README.md` justifies every architectural choice against the Day 1 deck — keep it in sync with the code.
+
+**Reading documentation: always open the `.md`, not the `.pdf`.** Every deck and brief exists in both formats; the Markdown costs far fewer tokens. The `.md` files are text extractions: diagrams appear as garbled `<!-- Start of picture text -->` callouts. Open the matching PDF page only when such a diagram actually matters to the task and its text is unreadable.
 
 Commands (run from `TP-meteo/`): `dotnet build` (TreatWarningsAsErrors), `dotnet test` (offline, HTTP transport faked), `dotnet run --project src/Meteo.Api`, `./licenses/audit.sh` (licence gate, exactly as CI runs it; needs network) and `./licenses/audit-canary.sh` (proves the gate still rejects a GPL package).
 
-Commit convention (from `prompt.md`): every commit message is prefixed `[TP1]`, `[TP2]`, `[TP3]` or `[TP4]` according to the TP it serves, e.g. `[TP2] fix(infra): ...`.
+Commit convention (from `TP-meteo/prompt.md`): every TP-meteo commit message is prefixed `[TP1]`, `[TP2]`, `[TP3]` or `[TP4]` according to the TP it serves, e.g. `[TP2] fix(infra): ...`. Commits serving the whole course (decks, CLAUDE.md) are prefixed `[COURS]`.
 
 ## TP1 — API Météo assignment
 

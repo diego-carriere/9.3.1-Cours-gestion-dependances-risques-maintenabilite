@@ -14,7 +14,7 @@ services externes : un **géocodeur** (adresse → lat/lon) puis un **fournisseu
   [TP4](#tp4--audit-de-conformité-des-licences).
 
 Ce README est la pièce à charge des quatre TP : il justifie chaque choix architectural face
-au support du Jour 1 (`../Support J1.md`) et, pour le TP4, du Jour 2 (`../Support J2.pdf`).
+au support du Jour 1 (`../documentation/Support J1.md`) et, pour le TP4, du Jour 2 (`../documentation/Support J2.md`).
 Il doit permettre de défendre le projet sans relire le code. Les commits sont préfixés
 `[TP1]`, `[TP2]`, `[TP3]` ou `[TP4]` selon le TP qu'ils servent.
 
